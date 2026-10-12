@@ -15,6 +15,8 @@ interface EditDiscussionModalProps {
   discussion: DiscussionWithAuthor
   onUpdated: (updated: DiscussionWithAuthor) => void
   allowRichContent?: boolean
+  allowImages?: boolean
+  communityUuid?: string
 }
 
 // Get the icon component for a label
@@ -56,6 +58,8 @@ export function EditDiscussionModal({
   discussion,
   onUpdated,
   allowRichContent = false,
+  allowImages = false,
+  communityUuid,
 }: EditDiscussionModalProps) {
   const { t } = useTranslation()
   const session = useLHSession() as any
@@ -264,6 +268,8 @@ export function EditDiscussionModal({
                 minHeight="180px"
                 editable={canEdit}
                 allowRichContent={allowRichContent}
+                communityUuid={communityUuid}
+                allowImages={allowImages}
               />
             </div>
           </div>

@@ -1,13 +1,16 @@
 'use client'
-import React from 'react'
-import { useEditor, EditorContent } from '@tiptap/react'
+import React, { useRef } from 'react'
+import { useEditor, EditorContent, Editor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Link from '@tiptap/extension-link'
 import Placeholder from '@tiptap/extension-placeholder'
 import Youtube from '@tiptap/extension-youtube'
-import { Bold, Italic, Strikethrough, Code, Link as LinkIcon, List, ListOrdered, Heading2, Quote, MonitorPlay } from 'lucide-react'
+import { Bold, Italic, Strikethrough, Code, Link as LinkIcon, List, ListOrdered, Heading2, Quote, MonitorPlay, ImagePlus, Loader2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { extractYoutubeVideoId, stripRichContent, youtubeWatchUrl } from './richContent'
+import { CommunityImage, countCommunityImages } from './CommunityImage'
+import { imageFilesFrom, useCommunityImageUpload } from './useCommunityImageUpload'
+import { COMMUNITY_IMAGE_TYPES, COMMUNITY_MAX_IMAGES_PER_POST } from '@services/communities/discussions'
 
 interface DiscussionEditorProps {
   content: any
@@ -17,6 +20,10 @@ interface DiscussionEditorProps {
   minHeight?: string
   /** Enables YouTube embeds (paste a link or use the toolbar). Off by default. */
   allowRichContent?: boolean
+  /** Community the post belongs to; required for image uploads. */
+  communityUuid?: string
+  /** Shows the image upload button and accepts pasted/dropped images. */
+  allowImages?: boolean
 }
 
 // Defined at module level so React keeps the same component identity across
@@ -54,8 +61,40 @@ export function DiscussionEditor({
   editable = true,
   minHeight = '150px',
   allowRichContent = false,
+  communityUuid,
+  allowImages = false,
 }: DiscussionEditorProps) {
   const { t } = useTranslation()
+  const { upload, isUploading, canUpload } = useCommunityImageUpload(communityUuid)
+  const imagesEnabled = editable && allowImages && canUpload
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const editorRef = useRef<Editor | null>(null)
+
+  const uploadImages = async (files: File[]) => {
+    const current = editorRef.current
+    if (!current) return
+    const remaining = COMMUNITY_MAX_IMAGES_PER_POST - countCommunityImages(current.getJSON())
+    await upload(files, remaining, (media, file) => {
+      editorRef.current
+        ?.chain()
+        .focus()
+        .insertCommunityImage({
+          fileId: media.file_id,
+          orgUuid: media.org_uuid,
+          communityUuid: media.community_uuid,
+          alt: file.name.replace(/\.[^.]+$/, '').slice(0, 300) || null,
+        })
+        .run()
+    })
+  }
+  // Paste/drop handlers are bound once by tiptap, so read the latest values
+  // through a ref instead of a stale closure.
+  const imageHandlerRef = useRef<{ enabled: boolean; uploadImages: (files: File[]) => void }>({
+    enabled: false,
+    uploadImages: () => {},
+  })
+  imageHandlerRef.current = { enabled: imagesEnabled, uploadImages }
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -94,6 +133,9 @@ export function DiscussionEditor({
       Placeholder.configure({
         placeholder,
       }),
+      // Always in the schema so existing images survive editing even when
+      // uploads are off; the toolbar button is what's gated.
+      CommunityImage,
       ...(allowRichContent
         ? [
             Youtube.configure({
@@ -115,11 +157,29 @@ export function DiscussionEditor({
     content: (allowRichContent ? content : stripRichContent(content)) || '',
     editable,
     immediatelyRender: false,
+    editorProps: {
+      handlePaste: (_view, event) => {
+        const files = imageFilesFrom(event.clipboardData)
+        if (files.length === 0 || !imageHandlerRef.current.enabled) return false
+        event.preventDefault()
+        imageHandlerRef.current.uploadImages(files)
+        return true
+      },
+      handleDrop: (_view, event, _slice, moved) => {
+        if (moved) return false
+        const files = imageFilesFrom((event as DragEvent).dataTransfer)
+        if (files.length === 0 || !imageHandlerRef.current.enabled) return false
+        event.preventDefault()
+        imageHandlerRef.current.uploadImages(files)
+        return true
+      },
+    },
     onUpdate: ({ editor }) => {
       const json = editor.getJSON()
       onChange(json)
     },
   }, [allowRichContent])
+  editorRef.current = editor
 
   if (!editor) {
     return null
@@ -237,6 +297,28 @@ export function DiscussionEditor({
               >
                 <MonitorPlay size={16} />
               </ToolbarButton>
+            )}
+            {imagesEnabled && (
+              <>
+                <ToolbarButton
+                  onClick={() => fileInputRef.current?.click()}
+                  title={t('communities.media.add_image', 'Add image')}
+                >
+                  {isUploading ? <Loader2 size={16} className="animate-spin" /> : <ImagePlus size={16} />}
+                </ToolbarButton>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept={COMMUNITY_IMAGE_TYPES.join(',')}
+                  multiple
+                  hidden
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files || [])
+                    e.target.value = ''
+                    uploadImages(files)
+                  }}
+                />
+              </>
             )}
           </div>
         </>
@@ -380,6 +462,23 @@ export function DiscussionEditor({
 
         .discussion-editor-content .ProseMirror .discussion-youtube.ProseMirror-selectednode {
           outline: 2px solid #2563eb;
+        }
+
+        .discussion-editor-content .ProseMirror .discussion-image {
+          margin: 0.75rem 0;
+        }
+
+        .discussion-editor-content .ProseMirror .discussion-image img {
+          display: block;
+          max-width: 100%;
+          max-height: 480px;
+          border-radius: 0.5rem;
+          border: 1px solid #e5e7eb;
+        }
+
+        .discussion-editor-content .ProseMirror .discussion-image.ProseMirror-selectednode img {
+          outline: 2px solid #2563eb;
+          outline-offset: 2px;
         }
       `}</style>
     </div>

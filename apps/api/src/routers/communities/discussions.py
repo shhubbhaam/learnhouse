@@ -1,5 +1,5 @@
 from typing import List, Dict
-from fastapi import APIRouter, Depends, Request, Query
+from fastapi import APIRouter, Depends, Request, Query, UploadFile, File
 from pydantic import BaseModel
 
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -52,6 +52,10 @@ from src.services.communities.comment_votes import (
 from src.services.communities.reactions import (
     get_reactions,
     toggle_reaction,
+)
+from src.services.communities.media import (
+    CommunityMediaUploadResponse,
+    upload_community_media,
 )
 
 
@@ -114,6 +118,34 @@ async def api_create_discussion(
         current_user,
         db_session,
         emoji=discussion_data.emoji,
+    )
+
+
+@router.post(
+    "/communities/{community_uuid}/media",
+    response_model=CommunityMediaUploadResponse,
+    summary="Upload an image for a discussion or reply",
+    description="Upload an image (JPEG, PNG, GIF or WebP, up to 10 MB) to embed in a discussion or reply. Returns the ids to reference in a `communityImage` content node. Requires read access to the community and the community's `allow_images` setting.",
+    responses={
+        200: {"description": "Image uploaded.", "model": CommunityMediaUploadResponse},
+        400: {"description": "File type or size not allowed"},
+        401: {"description": "Authentication required"},
+        403: {"description": "No access to this community, or images are disabled"},
+        404: {"description": "Community not found"},
+    },
+)
+async def api_upload_community_media(
+    request: Request,
+    community_uuid: str,
+    media: UploadFile = File(...),
+    current_user: PublicUser = Depends(get_current_user),
+    db_session: AsyncSession = Depends(get_db_session),
+) -> CommunityMediaUploadResponse:
+    """
+    Upload an image to be shown inside a discussion or reply.
+    """
+    return await upload_community_media(
+        request, community_uuid, media, current_user, db_session
     )
 
 

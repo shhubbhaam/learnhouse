@@ -5,6 +5,7 @@ import StarterKit from '@tiptap/starter-kit'
 import Link from '@tiptap/extension-link'
 import Youtube from '@tiptap/extension-youtube'
 import { stripRichContent } from './richContent'
+import { CommunityImage } from './CommunityImage'
 
 interface DiscussionContentProps {
   content: any
@@ -78,6 +79,7 @@ function DiscussionContentEditor({
           rel: 'noopener noreferrer',
         },
       }),
+      CommunityImage,
       ...(allowRichContent
         ? [
             Youtube.configure({
@@ -230,6 +232,19 @@ function DiscussionContentEditor({
           width: 100%;
           height: 100%;
           border: 0;
+        }
+
+        .discussion-content-readonly .ProseMirror .discussion-image {
+          margin: 0.75rem 0;
+        }
+
+        .discussion-content-readonly .ProseMirror .discussion-image img {
+          display: block;
+          max-width: 100%;
+          max-height: 600px;
+          border-radius: 0.5rem;
+          border: 1px solid #e5e7eb;
+          cursor: zoom-in;
         }
       `}</style>
     </>

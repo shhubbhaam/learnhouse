@@ -171,6 +171,15 @@ export function getCommunityThumbnailMediaDirectory(
   return uri
 }
 
+/** Image uploaded into a community discussion or reply. */
+export function getCommunityMediaDirectory(
+  orgUUID: string,
+  communityUUID: string,
+  fileId: string
+) {
+  return `${getMediaUrl()}content/orgs/${orgUUID}/communities/${communityUUID}/media/${fileId}`
+}
+
 export function getOrgLandingMediaDirectory(orgUUID: string, fileId: string) {
   let uri = `${getMediaUrl()}content/orgs/${orgUUID}/landing/${fileId}`
   return uri

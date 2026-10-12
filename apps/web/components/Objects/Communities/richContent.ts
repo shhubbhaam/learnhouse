@@ -98,3 +98,88 @@ export function hasRichContent(doc: any): boolean {
   if (RICH_NODE_TYPES.has(doc.type)) return true
   return Array.isArray(doc.content) && doc.content.some(hasRichContent)
 }
+
+/**
+ * Image uploads are on unless a community turns `allow_images` off.
+ * Independent of `allow_rich_content` (which only governs YouTube embeds).
+ */
+export function isImageUploadAllowed(
+  community: Pick<Community, 'moderation_settings'> | null | undefined
+): boolean {
+  return community?.moderation_settings?.allow_images !== false
+}
+
+export interface CommentImage {
+  fileId: string
+  orgUuid: string
+  communityUuid: string
+  alt?: string | null
+}
+
+/**
+ * Replies are stored as plain text, or as a small tiptap document when they
+ * carry images. Splits either form into editable text plus image list.
+ */
+export function parseCommentContent(content: string | null | undefined): {
+  text: string
+  images: CommentImage[]
+} {
+  if (!content) return { text: '', images: [] }
+  let parsed: any
+  try {
+    parsed = JSON.parse(content)
+  } catch {
+    return { text: content, images: [] }
+  }
+  if (!parsed || typeof parsed !== 'object' || parsed.type !== 'doc') {
+    return { text: content, images: [] }
+  }
+
+  const images: CommentImage[] = []
+  const blocks: string[] = []
+  const textOf = (node: any): string => {
+    if (!node || typeof node !== 'object') return ''
+    if (node.type === 'text') return typeof node.text === 'string' ? node.text : ''
+    if (node.type === 'hardBreak') return '\n'
+    if (!Array.isArray(node.content)) return ''
+    const sep = ['bulletList', 'orderedList', 'blockquote', 'listItem'].includes(node.type) ? '\n' : ''
+    return node.content.map(textOf).join(sep)
+  }
+  for (const node of Array.isArray(parsed.content) ? parsed.content : []) {
+    if (node?.type === 'communityImage') {
+      const a = node.attrs || {}
+      if (a.fileId && a.orgUuid && a.communityUuid) {
+        images.push({ fileId: a.fileId, orgUuid: a.orgUuid, communityUuid: a.communityUuid, alt: a.alt ?? null })
+      }
+    } else {
+      blocks.push(textOf(node))
+    }
+  }
+  return { text: blocks.join('\n').replace(/\n+$/, ''), images }
+}
+
+/** Inverse of parseCommentContent: plain text when there are no images. */
+export function buildCommentContent(text: string, images: CommentImage[]): string {
+  const trimmed = text.trim()
+  if (images.length === 0) return trimmed
+  const paragraphs = trimmed
+    ? trimmed.split('\n').map((line) =>
+        line ? { type: 'paragraph', content: [{ type: 'text', text: line }] } : { type: 'paragraph' }
+      )
+    : []
+  return JSON.stringify({
+    type: 'doc',
+    content: [
+      ...paragraphs,
+      ...images.map((img) => ({
+        type: 'communityImage',
+        attrs: {
+          fileId: img.fileId,
+          orgUuid: img.orgUuid,
+          communityUuid: img.communityUuid,
+          alt: img.alt ?? null,
+        },
+      })),
+    ],
+  })
+}

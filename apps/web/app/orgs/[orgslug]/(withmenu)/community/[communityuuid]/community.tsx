@@ -10,7 +10,7 @@ import { CommunityActionsMobile } from '@components/Objects/Communities/Communit
 import { DiscussionList } from '@components/Objects/Communities/DiscussionList'
 import { CreateDiscussionModal } from '@components/Objects/Modals/Communities/CreateDiscussionModal'
 import { Community } from '@services/communities/communities'
-import { isRichContentAllowed } from '@components/Objects/Communities/richContent'
+import { isImageUploadAllowed, isRichContentAllowed } from '@components/Objects/Communities/richContent'
 import { DiscussionWithAuthor } from '@services/communities/discussions'
 import { useMediaQuery } from 'usehooks-ts'
 import { useTrackView, AnalyticsEvent } from '@services/analytics'
@@ -102,6 +102,7 @@ const CommunityClient = ({
         isOpen={isCreateDiscussionModalOpen}
         onClose={() => setIsCreateDiscussionModalOpen(false)}
         allowRichContent={isRichContentAllowed(community)}
+        allowImages={isImageUploadAllowed(community)}
         communityUuid={community.community_uuid}
         orgSlug={orgslug}
       />

@@ -8,7 +8,7 @@ import { DiscussionSidebar } from '@components/Objects/Communities/DiscussionSid
 import { Breadcrumbs } from '@components/Objects/Breadcrumbs/Breadcrumbs'
 import { EditDiscussionModal } from '@components/Objects/Modals/Communities/EditDiscussionModal'
 import { Community } from '@services/communities/communities'
-import { isRichContentAllowed } from '@components/Objects/Communities/richContent'
+import { isImageUploadAllowed, isRichContentAllowed } from '@components/Objects/Communities/richContent'
 import { DiscussionWithAuthor } from '@services/communities/discussions'
 import { MessageCircle } from 'lucide-react'
 import { getUriWithOrg } from '@services/config/config'
@@ -31,6 +31,7 @@ const DiscussionPageClient = ({
   const [discussion, setDiscussion] = useState(initialDiscussion)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const allowRichContent = isRichContentAllowed(community)
+  const allowImages = isImageUploadAllowed(community)
 
   useTrackView(AnalyticsEvent.DiscussionViewed, {
     label: discussion.label,
@@ -75,6 +76,7 @@ const DiscussionPageClient = ({
             orgslug={orgslug}
             onEdit={() => setIsEditModalOpen(true)}
             allowRichContent={allowRichContent}
+            allowImages={allowImages}
           />
         </div>
       </div>
@@ -86,6 +88,8 @@ const DiscussionPageClient = ({
         discussion={discussion}
         onUpdated={handleDiscussionUpdated}
         allowRichContent={allowRichContent}
+        allowImages={allowImages}
+        communityUuid={community.community_uuid}
       />
     </GeneralWrapperStyled>
   )

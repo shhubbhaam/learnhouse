@@ -774,6 +774,15 @@
       "lock_failed": "Failed to update lock state",
       "pin_failed": "Failed to update pin state"
     },
+    "media": {
+      "add_image": "Add image",
+      "remove_image": "Remove image",
+      "uploading": "Uploading image...",
+      "upload_failed": "Image upload failed.",
+      "unsupported_type": "Only JPEG, PNG, GIF and WebP images can be uploaded.",
+      "too_large": "Images must be 10 MB or smaller.",
+      "too_many": "You can add up to 10 images per post."
+    },
     "comments": {
       "no_replies": "No replies yet",
       "locked": "This discussion is locked",
@@ -2574,6 +2583,8 @@
           "disable_reactions_description": "Turn off emoji reactions on discussions in this community.",
           "allow_rich_content_label": "Allow rich content",
           "allow_rich_content_description": "Let members embed YouTube videos in their discussions. Only YouTube is supported and every post is checked server-side. Off by default; recommended for small, trusted communities such as a single class.",
+          "allow_images_label": "Allow image uploads",
+          "allow_images_description": "Let members attach images (JPEG, PNG, GIF, WebP up to 10 MB, 10 per post) to discussions and replies. Images are stored with this community. On by default.",
           "min_post_length_label": "Minimum post length",
           "max_post_length_label": "Maximum post length",
           "max_comment_length_label": "Maximum reply length",

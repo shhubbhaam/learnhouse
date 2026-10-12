@@ -18,6 +18,7 @@ export interface CommunityModerationSettings {
   disable_reactions?: boolean
   auto_lock_days?: number
   allow_rich_content?: boolean
+  allow_images?: boolean
 }
 
 export interface Community {

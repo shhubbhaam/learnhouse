@@ -170,3 +170,62 @@ class TestValidateRichContent:
         with pytest.raises(HTTPException) as exc_info:
             validate_rich_content(json.dumps({"type": "doc", "content": ["nope"]}), _settings())
         assert _code(exc_info) == "MODERATION_UNSUPPORTED_CONTENT"
+
+
+ORG = "org_11111111-1111-1111-1111-111111111111"
+COMMUNITY = "community_22222222-2222-2222-2222-222222222222"
+SCOPE = (ORG, COMMUNITY)
+FILE_ID = "3f2b8c1e-6a4d-4f7e-9b1a-2c3d4e5f6a7b_media.png"
+
+
+def _image(file_id=FILE_ID, org=ORG, community=COMMUNITY, **extra):
+    attrs = {"fileId": file_id, "orgUuid": org, "communityUuid": community}
+    attrs.update(extra)
+    return {"type": "communityImage", "attrs": attrs}
+
+
+class TestCommunityImages:
+    def test_image_accepted_by_default(self):
+        validate_rich_content(_doc(_paragraph(), _image()), _settings(), media_scope=SCOPE)
+
+    def test_image_rejected_when_images_disabled(self):
+        with pytest.raises(HTTPException) as exc_info:
+            validate_rich_content(_doc(_image()), _settings(allow_images=False), media_scope=SCOPE)
+        assert _code(exc_info) == "MODERATION_IMAGES_DISABLED"
+
+    def test_image_rejected_without_scope(self):
+        with pytest.raises(HTTPException) as exc_info:
+            validate_rich_content(_doc(_image()), _settings())
+        assert _code(exc_info) == "MODERATION_IMAGE_NOT_ALLOWED"
+
+    @pytest.mark.parametrize(
+        "node",
+        [
+            _image(community="community_other"),
+            _image(org="org_other"),
+            _image(file_id="../../etc/passwd"),
+            _image(file_id="https://evil.example/pixel.png"),
+            _image(file_id="3f2b8c1e-6a4d-4f7e-9b1a-2c3d4e5f6a7b_media.svg"),
+            {"type": "communityImage", "attrs": {}},
+        ],
+    )
+    def test_foreign_or_malformed_images_rejected(self, node):
+        with pytest.raises(HTTPException) as exc_info:
+            validate_rich_content(_doc(node), _settings(), media_scope=SCOPE)
+        assert _code(exc_info) == "MODERATION_IMAGE_NOT_ALLOWED"
+
+    def test_too_many_images_rejected(self):
+        nodes = [_image() for _ in range(11)]
+        with pytest.raises(HTTPException) as exc_info:
+            validate_rich_content(_doc(*nodes), _settings(), media_scope=SCOPE)
+        assert _code(exc_info) == "MODERATION_TOO_MANY_IMAGES"
+
+    def test_overlong_alt_rejected(self):
+        with pytest.raises(HTTPException) as exc_info:
+            validate_rich_content(_doc(_image(alt="x" * 301)), _settings(), media_scope=SCOPE)
+        assert _code(exc_info) == "MODERATION_UNSUPPORTED_CONTENT"
+
+    def test_images_do_not_need_rich_content_flag(self):
+        validate_rich_content(
+            _doc(_image()), _settings(allow_rich_content=False), media_scope=SCOPE
+        )

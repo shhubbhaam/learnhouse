@@ -1,7 +1,7 @@
 'use client'
 import React, { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Loader2, User, AlertCircle, Lock, UserPlus } from 'lucide-react'
+import { Loader2, User, AlertCircle, Lock, UserPlus, ImagePlus } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useLHSession } from '@components/Contexts/LHSessionContext'
 import { useOrgMembership } from '@components/Contexts/OrgContext'
@@ -10,17 +10,24 @@ import {
   getComments,
   createComment,
   DiscussionCommentWithAuthor,
+  COMMUNITY_IMAGE_TYPES,
+  COMMUNITY_MAX_IMAGES_PER_POST,
 } from '@services/communities/discussions'
 import { CommentCard } from './CommentCard'
+import { CommentImages } from './CommentImages'
+import { buildCommentContent, CommentImage } from './richContent'
+import { imageFilesFrom, useCommunityImageUpload } from './useCommunityImageUpload'
 import { useLHAnalytics, AnalyticsEvent } from '@services/analytics'
 
 interface CommentSectionProps {
   discussionUuid: string
   communityUuid?: string
   isLocked?: boolean
+  /** Lets members attach images to replies (community `allow_images`). */
+  allowImages?: boolean
 }
 
-export function CommentSection({ discussionUuid, communityUuid, isLocked = false }: CommentSectionProps) {
+export function CommentSection({ discussionUuid, communityUuid, isLocked = false, allowImages = false }: CommentSectionProps) {
   const { t } = useTranslation()
   const session = useLHSession() as any
   const accessToken = session?.data?.tokens?.access_token
@@ -37,6 +44,35 @@ export function CommentSection({ discussionUuid, communityUuid, isLocked = false
   const [isFocused, setIsFocused] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [attachments, setAttachments] = useState<CommentImage[]>([])
+  const { upload, isUploading, canUpload } = useCommunityImageUpload(communityUuid)
+  const imagesEnabled = allowImages && canUpload
+  const hasDraft = !!newComment.trim() || attachments.length > 0
+
+  const attachImages = (files: File[]) => {
+    if (!imagesEnabled || files.length === 0) return
+    setIsFocused(true)
+    if (error) setError(null)
+    upload(files, COMMUNITY_MAX_IMAGES_PER_POST - attachments.length, (media, file) => {
+      setAttachments((prev) => [
+        ...prev,
+        {
+          fileId: media.file_id,
+          orgUuid: media.org_uuid,
+          communityUuid: media.community_uuid,
+          alt: file.name.replace(/\.[^.]+$/, '').slice(0, 300) || null,
+        },
+      ])
+    })
+  }
+
+  const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const files = imageFilesFrom(e.clipboardData)
+    if (files.length === 0 || !imagesEnabled) return
+    e.preventDefault()
+    attachImages(files)
+  }
 
   useEffect(() => {
     let stale = false
@@ -66,14 +102,14 @@ export function CommentSection({ discussionUuid, communityUuid, isLocked = false
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!newComment.trim() || !canComment || isSubmitting) return
+    if (!hasDraft || !canComment || isSubmitting || isUploading) return
 
     setIsSubmitting(true)
     setError(null)
     try {
       const comment = await createComment(
         discussionUuid,
-        { content: newComment.trim() },
+        { content: buildCommentContent(newComment, attachments) },
         accessToken
       )
       track(AnalyticsEvent.CommentPosted, {
@@ -82,6 +118,7 @@ export function CommentSection({ discussionUuid, communityUuid, isLocked = false
       })
       setComments((prev) => [...prev, comment])
       setNewComment('')
+      setAttachments([])
       setIsFocused(false)
     } catch (err: any) {
       const message =
@@ -156,7 +193,17 @@ export function CommentSection({ discussionUuid, communityUuid, isLocked = false
             )}
 
             <form onSubmit={handleSubmit}>
-              <div className={`rounded-md border transition-all ${
+              <div
+                onDragOver={(e) => {
+                  if (imagesEnabled && e.dataTransfer.types.includes('Files')) e.preventDefault()
+                }}
+                onDrop={(e) => {
+                  const files = imageFilesFrom(e.dataTransfer)
+                  if (files.length === 0 || !imagesEnabled) return
+                  e.preventDefault()
+                  attachImages(files)
+                }}
+                className={`rounded-md border transition-all ${
                 error
                   ? 'border-red-300'
                   : isFocused
@@ -171,19 +218,67 @@ export function CommentSection({ discussionUuid, communityUuid, isLocked = false
                     if (error) setError(null)
                   }}
                   onFocus={() => setIsFocused(true)}
-                  onBlur={() => !newComment && setIsFocused(false)}
+                  onBlur={() => !hasDraft && !isUploading && setIsFocused(false)}
                   onKeyDown={handleKeyDown}
+                  onPaste={handlePaste}
                   aria-label={t('communities.comments.write_reply')}
                   placeholder={t('communities.comments.write_reply')}
-                  rows={isFocused || newComment ? 2 : 1}
+                  rows={isFocused || hasDraft ? 2 : 1}
                   className="w-full px-3 py-2 text-sm bg-transparent outline-none resize-none placeholder:text-gray-400"
                 />
 
-                {(isFocused || newComment) && (
-                  <div className="flex items-center justify-end px-2 py-2 border-t border-gray-100">
+                {attachments.length > 0 && (
+                  <div className="px-3 pb-2">
+                    <CommentImages
+                      images={attachments}
+                      variant="thumb"
+                      onRemove={(index) =>
+                        setAttachments((prev) => prev.filter((_, i) => i !== index))
+                      }
+                    />
+                  </div>
+                )}
+
+                {(isFocused || hasDraft || isUploading) && (
+                  <div className="flex items-center justify-between gap-2 px-2 py-2 border-t border-gray-100">
+                    <div className="flex items-center gap-1">
+                      {imagesEnabled && (
+                        <>
+                          <button
+                            type="button"
+                            // Keep the textarea focused so the footer doesn't collapse mid-click.
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={isUploading || attachments.length >= COMMUNITY_MAX_IMAGES_PER_POST}
+                            aria-label={t('communities.media.add_image', 'Add image')}
+                            title={t('communities.media.add_image', 'Add image')}
+                            className="p-1.5 rounded text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {isUploading ? <Loader2 size={16} className="animate-spin" /> : <ImagePlus size={16} />}
+                          </button>
+                          <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept={COMMUNITY_IMAGE_TYPES.join(',')}
+                            multiple
+                            hidden
+                            onChange={(e) => {
+                              const files = Array.from(e.target.files || [])
+                              e.target.value = ''
+                              attachImages(files)
+                            }}
+                          />
+                          {isUploading && (
+                            <span className="text-xs text-gray-400">
+                              {t('communities.media.uploading', 'Uploading image...')}
+                            </span>
+                          )}
+                        </>
+                      )}
+                    </div>
                     <button
                       type="submit"
-                      disabled={!newComment.trim() || isSubmitting}
+                      disabled={!hasDraft || isSubmitting || isUploading}
                       className="px-3 py-1 text-xs font-medium text-white bg-neutral-900 hover:bg-neutral-800 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
                     >
                       {isSubmitting ? (

@@ -52,6 +52,18 @@ YOUTUBE_HOSTS = frozenset(
 )
 YOUTUBE_ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]{11}$")
 
+# Images uploaded to a community (``POST /communities/{uuid}/media``). The node
+# never carries a URL: only the stored file id plus the org/community it
+# belongs to, so a post can't hotlink arbitrary external images (tracking
+# pixels) or point at another community's files. The client builds the media
+# URL from these attributes. Governed by the ``allow_images`` setting.
+MEDIA_NODE_TYPES = frozenset({"communityImage"})
+COMMUNITY_MEDIA_FILE_PATTERN = re.compile(
+    r"^[0-9a-fA-F-]{36}_media\.(?:jpg|png|gif|webp)$"
+)
+MAX_IMAGES_PER_POST = 10
+MAX_IMAGE_ALT_LENGTH = 300
+
 
 def extract_youtube_video_id(url: str) -> Optional[str]:
     """
@@ -91,7 +103,54 @@ def _rich_content_error(message: str, code: str) -> HTTPException:
     )
 
 
-def _walk_content_node(node: Any, allow_rich: bool, content_type: str) -> None:
+def _validate_media_node(node: Dict[str, Any], ctx: Dict[str, Any]) -> None:
+    content_type = ctx["content_type"]
+    if not ctx["allow_images"]:
+        raise _rich_content_error(
+            f"Images are not allowed in {content_type}s in this community.",
+            "MODERATION_IMAGES_DISABLED",
+        )
+    scope = ctx["media_scope"]
+    attrs = node.get("attrs") or {}
+    file_id = attrs.get("fileId")
+    if (
+        scope is None
+        or not isinstance(file_id, str)
+        or not COMMUNITY_MEDIA_FILE_PATTERN.match(file_id)
+        or attrs.get("orgUuid") != scope[0]
+        or attrs.get("communityUuid") != scope[1]
+    ):
+        raise _rich_content_error(
+            "Only images uploaded to this community can be included.",
+            "MODERATION_IMAGE_NOT_ALLOWED",
+        )
+    alt = attrs.get("alt")
+    if alt is not None and (not isinstance(alt, str) or len(alt) > MAX_IMAGE_ALT_LENGTH):
+        raise _rich_content_error(
+            f"Your {content_type} contains content that is not supported.",
+            "MODERATION_UNSUPPORTED_CONTENT",
+        )
+    if node.get("content"):
+        raise _rich_content_error(
+            f"Your {content_type} contains content that is not supported.",
+            "MODERATION_UNSUPPORTED_CONTENT",
+        )
+    ctx["image_count"] += 1
+    if ctx["image_count"] > MAX_IMAGES_PER_POST:
+        raise _rich_content_error(
+            f"A {content_type} can include at most {MAX_IMAGES_PER_POST} images.",
+            "MODERATION_TOO_MANY_IMAGES",
+        )
+
+
+def _walk_content_node(node: Any, allow_rich: bool, content_type: str, ctx: Optional[Dict[str, Any]] = None) -> None:
+    if ctx is None:
+        ctx = {
+            "content_type": content_type,
+            "allow_images": False,
+            "media_scope": None,
+            "image_count": 0,
+        }
     if not isinstance(node, dict):
         raise _rich_content_error(
             f"Your {content_type} contains content that is not supported.",
@@ -99,7 +158,9 @@ def _walk_content_node(node: Any, allow_rich: bool, content_type: str) -> None:
         )
 
     node_type = node.get("type")
-    if node_type in RICH_NODE_TYPES:
+    if node_type in MEDIA_NODE_TYPES:
+        _validate_media_node(node, ctx)
+    elif node_type in RICH_NODE_TYPES:
         if not allow_rich:
             raise _rich_content_error(
                 f"Embedded media is not allowed in {content_type}s in this community.",
@@ -143,18 +204,24 @@ def _walk_content_node(node: Any, allow_rich: bool, content_type: str) -> None:
             "MODERATION_UNSUPPORTED_CONTENT",
         )
     for child in children:
-        _walk_content_node(child, allow_rich, content_type)
+        _walk_content_node(child, allow_rich, content_type, ctx)
 
 
 def validate_rich_content(
     content: Optional[str],
     settings: Dict[str, Any],
     content_type: str = "discussion",
+    media_scope: Optional[Tuple[str, str]] = None,
 ) -> None:
     """
     Validate the structure of tiptap JSON content: only known node and mark
     types are accepted, and embeds are only accepted when the community has
     ``allow_rich_content`` enabled (and then only YouTube video links).
+
+    Uploaded images (``communityImage`` nodes) are accepted when the
+    community's ``allow_images`` setting is on and the node references a file
+    of this community: ``media_scope`` is ``(org_uuid, community_uuid)``.
+    Without a scope every image node is rejected.
 
     Plain-text content (anything that is not a tiptap ``doc``) passes through.
     """
@@ -168,7 +235,37 @@ def validate_rich_content(
         return
 
     allow_rich = bool(settings.get("allow_rich_content", False))
-    _walk_content_node(parsed, allow_rich, content_type)
+    ctx = {
+        "content_type": content_type,
+        "allow_images": bool(settings.get("allow_images", True)),
+        "media_scope": media_scope,
+        "image_count": 0,
+    }
+    _walk_content_node(parsed, allow_rich, content_type, ctx)
+
+
+def content_may_have_media(content: Optional[str]) -> bool:
+    """Cheap pre-check so the org lookup only runs for posts with images."""
+    return bool(content) and any(t in content for t in MEDIA_NODE_TYPES)
+
+
+async def get_media_scope(
+    community: Optional[Community],
+    db_session: AsyncSession,
+) -> Optional[Tuple[str, str]]:
+    """Return ``(org_uuid, community_uuid)`` for validating image nodes."""
+    if community is None:
+        return None
+    from src.db.organizations import Organization
+
+    org = (
+        await db_session.execute(
+            select(Organization).where(Organization.id == community.org_id)
+        )
+    ).scalars().first()
+    if org is None:
+        return None
+    return (org.org_uuid, community.community_uuid)
 
 
 def get_community_settings(community: Optional[Community]) -> Dict[str, Any]:
@@ -468,7 +565,14 @@ async def validate_discussion_content(
     )
 
     if content:
-        validate_rich_content(content, settings, content_type="discussion")
+        media_scope = (
+            await get_media_scope(community, db_session)
+            if content_may_have_media(content)
+            else None
+        )
+        validate_rich_content(
+            content, settings, content_type="discussion", media_scope=media_scope
+        )
         await validate_content_for_community(
             content, community_id, db_session, content_type="discussion",
             min_length=min_post,
@@ -489,7 +593,14 @@ async def validate_comment_content(
     community = (await db_session.execute(statement)).scalars().first()
     settings = get_community_settings(community)
 
-    validate_rich_content(content, settings, content_type="reply")
+    media_scope = (
+        await get_media_scope(community, db_session)
+        if content_may_have_media(content)
+        else None
+    )
+    validate_rich_content(
+        content, settings, content_type="reply", media_scope=media_scope
+    )
     await validate_content_for_community(
         content, community_id, db_session, content_type="reply",
         max_length=int(settings.get("max_comment_length", 0) or 0),

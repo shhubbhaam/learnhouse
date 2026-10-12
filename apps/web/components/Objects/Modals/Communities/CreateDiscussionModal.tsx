@@ -18,6 +18,7 @@ interface CreateDiscussionModalProps {
   communityUuid: string
   orgSlug: string
   allowRichContent?: boolean
+  allowImages?: boolean
 }
 
 // Get the icon component for a label
@@ -42,6 +43,7 @@ export function CreateDiscussionModal({
   communityUuid,
   orgSlug: _orgSlug,
   allowRichContent = false,
+  allowImages = false,
 }: CreateDiscussionModalProps) {
   const { t } = useTranslation()
   const session = useLHSession() as any
@@ -231,6 +233,8 @@ export function CreateDiscussionModal({
               placeholder={t('communities.create_discussion.details_placeholder')}
               minHeight="180px"
               allowRichContent={allowRichContent}
+              communityUuid={communityUuid}
+              allowImages={allowImages}
             />
             <p className="mt-1.5 text-xs text-gray-500">
               {allowRichContent

@@ -1,6 +1,7 @@
 import { getAPIUrl } from '@services/config/config'
 import {
   RequestBodyWithAuthHeader,
+  RequestBodyFormWithAuthHeader,
   errorHandling,
   getResponseMetadata,
 } from '@services/utils/ts/requests'
@@ -436,4 +437,33 @@ export async function toggleReaction(
   )
   const res = await errorHandling(result)
   return res
+}
+
+// ============================================================================
+// Media (images in discussions and replies)
+// ============================================================================
+
+export interface CommunityMediaUpload {
+  file_id: string
+  org_uuid: string
+  community_uuid: string
+}
+
+/** Accepted by the API (checked again server-side by magic bytes). */
+export const COMMUNITY_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+export const COMMUNITY_IMAGE_MAX_BYTES = 10 * 1024 * 1024
+export const COMMUNITY_MAX_IMAGES_PER_POST = 10
+
+export async function uploadCommunityMedia(
+  community_uuid: string,
+  file: File,
+  access_token: string
+): Promise<CommunityMediaUpload> {
+  const formData = new FormData()
+  formData.append('media', file)
+  const result: any = await fetch(
+    `${getAPIUrl()}communities/${community_uuid}/media`,
+    RequestBodyFormWithAuthHeader('POST', formData, null, access_token)
+  )
+  return errorHandling(result)
 }

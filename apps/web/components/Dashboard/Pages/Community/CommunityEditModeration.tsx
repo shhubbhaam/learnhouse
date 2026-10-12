@@ -16,6 +16,7 @@ import {
   Lock,
   SmilePlus,
   MonitorPlay,
+  ImageIcon,
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
@@ -49,6 +50,7 @@ const DEFAULT_SETTINGS: Settings = {
   disable_reactions: false,
   auto_lock_days: 0,
   allow_rich_content: false,
+  allow_images: true,
 }
 
 function normalizeSettings(stored: CommunityModerationSettings | null | undefined): Settings {
@@ -65,6 +67,7 @@ function normalizeSettings(stored: CommunityModerationSettings | null | undefine
     disable_reactions: stored?.disable_reactions ?? DEFAULT_SETTINGS.disable_reactions,
     auto_lock_days: stored?.auto_lock_days ?? DEFAULT_SETTINGS.auto_lock_days,
     allow_rich_content: stored?.allow_rich_content ?? DEFAULT_SETTINGS.allow_rich_content,
+    allow_images: stored?.allow_images ?? DEFAULT_SETTINGS.allow_images,
   }
 }
 
@@ -80,7 +83,8 @@ function settingsEqual(a: Settings, b: Settings) {
     a.require_email_verified === b.require_email_verified &&
     a.disable_reactions === b.disable_reactions &&
     a.auto_lock_days === b.auto_lock_days &&
-    a.allow_rich_content === b.allow_rich_content
+    a.allow_rich_content === b.allow_rich_content &&
+    a.allow_images === b.allow_images
   )
 }
 
@@ -93,7 +97,12 @@ type NumericKey =
   | 'min_account_age_days'
   | 'auto_lock_days'
 
-type ToggleKey = 'block_links' | 'require_email_verified' | 'disable_reactions' | 'allow_rich_content'
+type ToggleKey =
+  | 'block_links'
+  | 'require_email_verified'
+  | 'disable_reactions'
+  | 'allow_rich_content'
+  | 'allow_images'
 
 const CommunityEditModeration: React.FC = () => {
   const { t } = useTranslation()
@@ -260,6 +269,13 @@ const CommunityEditModeration: React.FC = () => {
               description={t('dashboard.courses.communities.moderation.allow_rich_content_description')}
               checked={settings.allow_rich_content}
               onChange={setToggle('allow_rich_content')}
+            />
+            <ToggleRow
+              icon={<ImageIcon size={18} className="text-gray-500" />}
+              label={t('dashboard.courses.communities.moderation.allow_images_label')}
+              description={t('dashboard.courses.communities.moderation.allow_images_description')}
+              checked={settings.allow_images}
+              onChange={setToggle('allow_images')}
             />
           </Section>
 

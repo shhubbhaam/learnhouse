@@ -29,6 +29,7 @@ interface DiscussionDetailProps {
   orgslug: string
   onEdit?: () => void
   allowRichContent?: boolean
+  allowImages?: boolean
 }
 
 /**
@@ -73,6 +74,7 @@ export function DiscussionDetail({
   orgslug,
   onEdit,
   allowRichContent = false,
+  allowImages = false,
 }: DiscussionDetailProps) {
   const { t } = useTranslation()
   const session = useLHSession() as any
@@ -190,6 +192,7 @@ export function DiscussionDetail({
           discussionUuid={discussion.discussion_uuid}
           communityUuid={communityUuid}
           isLocked={discussion.is_locked}
+          allowImages={allowImages}
         />
       </div>
     </div>

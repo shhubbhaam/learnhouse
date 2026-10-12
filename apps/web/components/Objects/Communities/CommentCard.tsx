@@ -1,5 +1,5 @@
 'use client'
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
@@ -21,6 +21,8 @@ import {
 } from "@components/ui/dropdown-menu"
 import UserAvatar from '@components/Objects/UserAvatar'
 import { CommentUpvoteButton } from './CommentUpvoteButton'
+import { CommentImages } from './CommentImages'
+import { buildCommentContent, CommentImage, parseCommentContent } from './richContent'
 
 dayjs.extend(relativeTime)
 
@@ -52,8 +54,12 @@ export function CommentCard({ comment, canManage = false, onDeleted, onUpdated }
   const accessToken = session?.data?.tokens?.access_token
   const currentUserId = session?.data?.user?.id
 
+  // Replies with images are stored as a small tiptap doc; split it back into
+  // text + images for display and editing.
+  const parsed = useMemo(() => parseCommentContent(comment.content), [comment.content])
   const [isEditing, setIsEditing] = useState(false)
-  const [editContent, setEditContent] = useState(comment.content)
+  const [editContent, setEditContent] = useState(parsed.text)
+  const [editImages, setEditImages] = useState<CommentImage[]>(parsed.images)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isHovered, setIsHovered] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -67,14 +73,14 @@ export function CommentCard({ comment, canManage = false, onDeleted, onUpdated }
     : t('common.unknown')
 
   const handleEdit = async () => {
-    if (!editContent.trim() || isSubmitting) return
+    if ((!editContent.trim() && editImages.length === 0) || isSubmitting) return
 
     setIsSubmitting(true)
     setError(null)
     try {
       const updated = await updateComment(
         comment.comment_uuid,
-        { content: editContent.trim() },
+        { content: buildCommentContent(editContent, editImages) },
         accessToken
       )
       onUpdated(updated)
@@ -111,8 +117,15 @@ export function CommentCard({ comment, canManage = false, onDeleted, onUpdated }
     }
   }
 
+  const startEdit = () => {
+    setEditContent(parsed.text)
+    setEditImages(parsed.images)
+    setIsEditing(true)
+  }
+
   const cancelEdit = () => {
-    setEditContent(comment.content)
+    setEditContent(parsed.text)
+    setEditImages(parsed.images)
     setIsEditing(false)
     setError(null)
   }
@@ -180,10 +193,15 @@ export function CommentCard({ comment, canManage = false, onDeleted, onUpdated }
                     error ? 'border-red-300' : 'border-gray-200 focus:border-gray-300'
                   }`}
                 />
+                <CommentImages
+                  images={editImages}
+                  variant="thumb"
+                  onRemove={(index) => setEditImages((prev) => prev.filter((_, i) => i !== index))}
+                />
                 <div className="flex items-center gap-2">
                   <button
                     onClick={handleEdit}
-                    disabled={!editContent.trim() || isSubmitting}
+                    disabled={(!editContent.trim() && editImages.length === 0) || isSubmitting}
                     className="px-3 py-1 text-xs font-medium text-white bg-neutral-900 hover:bg-neutral-800 rounded-md transition-colors disabled:opacity-50 flex items-center gap-1"
                   >
                     {isSubmitting ? <Loader2 size={12} className="animate-spin" /> : t('communities.comments.save')}
@@ -203,9 +221,12 @@ export function CommentCard({ comment, canManage = false, onDeleted, onUpdated }
                   <span className="font-medium text-gray-900 text-sm">{authorName}</span>
                   <span className="text-gray-400 text-xs">{timeAgo}</span>
                 </div>
-                <p className="text-sm text-gray-700 whitespace-pre-wrap" dir="auto">
-                  {comment.content}
-                </p>
+                {parsed.text && (
+                  <p className="text-sm text-gray-700 whitespace-pre-wrap" dir="auto">
+                    {parsed.text}
+                  </p>
+                )}
+                <CommentImages images={parsed.images} />
               </>
             )}
           </div>
@@ -223,7 +244,7 @@ export function CommentCard({ comment, canManage = false, onDeleted, onUpdated }
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-36">
               {isAuthor && (
-                <DropdownMenuItem onClick={() => setIsEditing(true)}>
+                <DropdownMenuItem onClick={startEdit}>
                   <Pencil className="me-2 h-4 w-4" />
                   {t('communities.comments.edit')}
                 </DropdownMenuItem>
