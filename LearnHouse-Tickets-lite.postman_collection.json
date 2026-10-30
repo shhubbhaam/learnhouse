@@ -1,0 +1,499 @@
+{
+  "info": {
+    "_postman_id": "406bc744-c802-4201-b4b7-5811111ab204",
+    "name": "LearnHouse Tickets (lite)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "01 Login learner (copy tokens.access_token -> learnerToken)",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/auth/login",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "auth",
+            "login"
+          ]
+        },
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            {
+              "key": "username",
+              "value": "{{learnerEmail}}"
+            },
+            {
+              "key": "password",
+              "value": "{{learnerPassword}}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "02 Login admin (copy tokens.access_token -> adminToken)",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/auth/login",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "auth",
+            "login"
+          ]
+        },
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            {
+              "key": "username",
+              "value": "{{adminEmail}}"
+            },
+            {
+              "key": "password",
+              "value": "{{adminPassword}}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "03 Get org (copy id -> orgId)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{learnerToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/orgs/slug/{{orgSlug}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "orgs",
+            "slug",
+            "{{orgSlug}}"
+          ]
+        }
+      }
+    },
+    {
+      "name": "04 Learner raises ticket (copy ticket_uuid -> ticketUuid)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{learnerToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/tickets/",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "tickets"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"org_id\": {{orgId}},\n  \"subject\": \"Video won't play\",\n  \"description\": \"Lesson 3 video shows a black screen on Chrome.\",\n  \"category\": \"TECHNICAL\"\n}"
+        }
+      }
+    },
+    {
+      "name": "05 Learner: my tickets",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{learnerToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/tickets/org/{{orgId}}/me",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "tickets",
+            "org",
+            "{{orgId}}",
+            "me"
+          ]
+        }
+      }
+    },
+    {
+      "name": "06 Learner: staff queue (expect 403)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{learnerToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/tickets/org/{{orgId}}/admin",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "tickets",
+            "org",
+            "{{orgId}}",
+            "admin"
+          ]
+        }
+      }
+    },
+    {
+      "name": "07 Learner: internal note (expect 403)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{learnerToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/tickets/{{ticketUuid}}/messages",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "tickets",
+            "{{ticketUuid}}",
+            "messages"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{ \"content\": \"sneaky\", \"is_internal\": true }"
+        }
+      }
+    },
+    {
+      "name": "08 Learner: triage (expect 404)",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{learnerToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/tickets/{{ticketUuid}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "tickets",
+            "{{ticketUuid}}"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{ \"priority\": \"URGENT\" }"
+        }
+      }
+    },
+    {
+      "name": "09 Admin: queue (OPEN)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/tickets/org/{{orgId}}/admin?status=OPEN&page=1&limit=25",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "tickets",
+            "org",
+            "{{orgId}}",
+            "admin"
+          ],
+          "query": [
+            {
+              "key": "status",
+              "value": "OPEN"
+            },
+            {
+              "key": "page",
+              "value": "1"
+            },
+            {
+              "key": "limit",
+              "value": "25"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "10 Admin: reply",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/tickets/{{ticketUuid}}/messages",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "tickets",
+            "{{ticketUuid}}",
+            "messages"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{ \"content\": \"Looking into it now.\" }"
+        }
+      }
+    },
+    {
+      "name": "11 Admin: internal note",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/tickets/{{ticketUuid}}/messages",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "tickets",
+            "{{ticketUuid}}",
+            "messages"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{ \"content\": \"CDN cache issue - staff only.\", \"is_internal\": true }"
+        }
+      }
+    },
+    {
+      "name": "12 Admin: resolve with note",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/tickets/{{ticketUuid}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "tickets",
+            "{{ticketUuid}}"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"RESOLVED\",\n  \"priority\": \"HIGH\",\n  \"resolution_note\": \"Cleared the CDN cache.\"\n}"
+        }
+      }
+    },
+    {
+      "name": "13 Admin: view ticket (2 messages)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/tickets/{{ticketUuid}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "tickets",
+            "{{ticketUuid}}"
+          ]
+        }
+      }
+    },
+    {
+      "name": "14 Learner: view ticket (1 message, has resolution_note)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{learnerToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/tickets/{{ticketUuid}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "tickets",
+            "{{ticketUuid}}"
+          ]
+        }
+      }
+    },
+    {
+      "name": "15 Learner: reply (reopens ticket)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{learnerToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/tickets/{{ticketUuid}}/messages",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "tickets",
+            "{{ticketUuid}}",
+            "messages"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{ \"content\": \"Still black on Firefox.\" }"
+        }
+      }
+    },
+    {
+      "name": "16 Learner: view ticket (status OPEN again)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{learnerToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/tickets/{{ticketUuid}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "tickets",
+            "{{ticketUuid}}"
+          ]
+        }
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:1338/api/v1"
+    },
+    {
+      "key": "orgSlug",
+      "value": "default"
+    },
+    {
+      "key": "learnerEmail",
+      "value": ""
+    },
+    {
+      "key": "learnerPassword",
+      "value": ""
+    },
+    {
+      "key": "adminEmail",
+      "value": ""
+    },
+    {
+      "key": "adminPassword",
+      "value": ""
+    },
+    {
+      "key": "learnerToken",
+      "value": ""
+    },
+    {
+      "key": "adminToken",
+      "value": ""
+    },
+    {
+      "key": "orgId",
+      "value": ""
+    },
+    {
+      "key": "ticketUuid",
+      "value": ""
+    }
+  ]
+}

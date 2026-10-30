@@ -1,0 +1,277 @@
+{
+  "info": {
+    "name": "LearnHouse - Support Tickets",
+    "description": "Smoke test for /api/v1/tickets. Set the collection variables (Variables tab), then run requests top to bottom or use the Collection Runner. Tokens, org id and ticket uuid are captured automatically.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:1338/api/v1" },
+    { "key": "orgSlug", "value": "default" },
+    { "key": "learnerEmail", "value": "learner@example.com" },
+    { "key": "learnerPassword", "value": "" },
+    { "key": "adminEmail", "value": "admin@example.com" },
+    { "key": "adminPassword", "value": "" },
+    { "key": "learnerToken", "value": "" },
+    { "key": "adminToken", "value": "" },
+    { "key": "orgId", "value": "" },
+    { "key": "ticketUuid", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "0. Setup",
+      "item": [
+        {
+          "name": "Login as learner",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "pm.collectionVariables.set('learnerToken', pm.response.json().tokens.access_token);"
+          ]}}],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/login",
+            "body": { "mode": "urlencoded", "urlencoded": [
+              { "key": "username", "value": "{{learnerEmail}}" },
+              { "key": "password", "value": "{{learnerPassword}}" }
+            ]}
+          }
+        },
+        {
+          "name": "Login as admin",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "pm.collectionVariables.set('adminToken', pm.response.json().tokens.access_token);"
+          ]}}],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/login",
+            "body": { "mode": "urlencoded", "urlencoded": [
+              { "key": "username", "value": "{{adminEmail}}" },
+              { "key": "password", "value": "{{adminPassword}}" }
+            ]}
+          }
+        },
+        {
+          "name": "Get org id from slug",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "pm.collectionVariables.set('orgId', pm.response.json().id);"
+          ]}}],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{learnerToken}}" }] },
+            "method": "GET",
+            "url": "{{baseUrl}}/orgs/slug/{{orgSlug}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "1. Learner",
+      "item": [
+        {
+          "name": "Raise a ticket",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "const t = pm.response.json();",
+            "pm.test('starts OPEN / MEDIUM', () => { pm.expect(t.status).to.eql('OPEN'); pm.expect(t.priority).to.eql('MEDIUM'); });",
+            "pm.test('author has no email', () => pm.expect(t.author).to.not.have.property('email'));",
+            "pm.collectionVariables.set('ticketUuid', t.ticket_uuid);"
+          ]}}],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{learnerToken}}" }] },
+            "method": "POST",
+            "url": "{{baseUrl}}/tickets/",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"org_id\": {{orgId}},\n  \"subject\": \"Video won't play\",\n  \"description\": \"Lesson 3 video shows a black screen on Chrome.\",\n  \"category\": \"TECHNICAL\"\n}" }
+          }
+        },
+        {
+          "name": "My tickets",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "pm.test('contains new ticket', () => pm.expect(pm.response.json().map(t => t.ticket_uuid)).to.include(pm.collectionVariables.get('ticketUuid')));"
+          ]}}],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{learnerToken}}" }] },
+            "method": "GET",
+            "url": "{{baseUrl}}/tickets/org/{{orgId}}/me"
+          }
+        },
+        {
+          "name": "Learner tries staff queue (expect 403)",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('403 Forbidden', () => pm.response.to.have.status(403));"
+          ]}}],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{learnerToken}}" }] },
+            "method": "GET",
+            "url": "{{baseUrl}}/tickets/org/{{orgId}}/admin"
+          }
+        },
+        {
+          "name": "Learner tries internal note (expect 403)",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('403 Forbidden', () => pm.response.to.have.status(403));"
+          ]}}],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{learnerToken}}" }] },
+            "method": "POST",
+            "url": "{{baseUrl}}/tickets/{{ticketUuid}}/messages",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{ \"content\": \"sneaky\", \"is_internal\": true }" }
+          }
+        },
+        {
+          "name": "Learner tries to triage (expect 404)",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('404 Not Found', () => pm.response.to.have.status(404));"
+          ]}}],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{learnerToken}}" }] },
+            "method": "PATCH",
+            "url": "{{baseUrl}}/tickets/{{ticketUuid}}",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{ \"priority\": \"URGENT\" }" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Staff",
+      "item": [
+        {
+          "name": "Support queue (OPEN)",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "pm.test('paged shape', () => { const b = pm.response.json(); pm.expect(b).to.have.keys('items','total','page','limit'); pm.expect(b.total).to.be.above(0); });"
+          ]}}],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{adminToken}}" }] },
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/tickets/org/{{orgId}}/admin?status=OPEN&page=1&limit=25",
+              "host": ["{{baseUrl}}"], "path": ["tickets", "org", "{{orgId}}", "admin"],
+              "query": [
+                { "key": "status", "value": "OPEN" },
+                { "key": "priority", "value": "HIGH", "disabled": true },
+                { "key": "category", "value": "TECHNICAL", "disabled": true },
+                { "key": "assigned_to", "value": "", "disabled": true },
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "25" }
+              ] }
+          }
+        },
+        {
+          "name": "Staff reply",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "pm.test('flagged as staff', () => pm.expect(pm.response.json().is_staff).to.eql(true));"
+          ]}}],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{adminToken}}" }] },
+            "method": "POST",
+            "url": "{{baseUrl}}/tickets/{{ticketUuid}}/messages",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{ \"content\": \"Looking into it now.\" }" }
+          }
+        },
+        {
+          "name": "Staff internal note",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "pm.test('internal', () => pm.expect(pm.response.json().is_internal).to.eql(true));"
+          ]}}],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{adminToken}}" }] },
+            "method": "POST",
+            "url": "{{baseUrl}}/tickets/{{ticketUuid}}/messages",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{ \"content\": \"CDN cache issue - staff only.\", \"is_internal\": true }" }
+          }
+        },
+        {
+          "name": "Triage: resolve with note",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "const t = pm.response.json();",
+            "pm.test('resolved + high + note', () => { pm.expect(t.status).to.eql('RESOLVED'); pm.expect(t.priority).to.eql('HIGH'); pm.expect(t.resolution_note).to.eql('Cleared the CDN cache.'); });"
+          ]}}],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{adminToken}}" }] },
+            "method": "PATCH",
+            "url": "{{baseUrl}}/tickets/{{ticketUuid}}",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"status\": \"RESOLVED\",\n  \"priority\": \"HIGH\",\n  \"resolution_note\": \"Cleared the CDN cache.\"\n}" }
+          }
+        },
+        {
+          "name": "Staff view of ticket (sees internal note)",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "pm.test('2 messages incl. internal', () => pm.expect(pm.response.json().messages.length).to.eql(2));"
+          ]}}],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{adminToken}}" }] },
+            "method": "GET",
+            "url": "{{baseUrl}}/tickets/{{ticketUuid}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Learner follow-up",
+      "item": [
+        {
+          "name": "Learner view (internal note hidden)",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "const t = pm.response.json();",
+            "pm.test('sees resolution note', () => pm.expect(t.resolution_note).to.eql('Cleared the CDN cache.'));",
+            "pm.test('internal note hidden', () => pm.expect(t.messages.every(m => !m.is_internal)).to.be.true);",
+            "pm.test('only the public reply', () => pm.expect(t.messages.length).to.eql(1));"
+          ]}}],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{learnerToken}}" }] },
+            "method": "GET",
+            "url": "{{baseUrl}}/tickets/{{ticketUuid}}"
+          }
+        },
+        {
+          "name": "Learner replies -> ticket reopens",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ]}}],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{learnerToken}}" }] },
+            "method": "POST",
+            "url": "{{baseUrl}}/tickets/{{ticketUuid}}/messages",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{ \"content\": \"Still black on Firefox.\" }" }
+          }
+        },
+        {
+          "name": "Confirm status is OPEN again",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('reopened', () => pm.expect(pm.response.json().status).to.eql('OPEN'));"
+          ]}}],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{learnerToken}}" }] },
+            "method": "GET",
+            "url": "{{baseUrl}}/tickets/{{ticketUuid}}"
+          }
+        },
+        {
+          "name": "Anonymous request (expect 401)",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('401 Unauthorized', () => pm.response.to.have.status(401));"
+          ]}}],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": "{{baseUrl}}/tickets/org/{{orgId}}/me"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -93,6 +93,7 @@ def _install_stub_modules(monkeypatch: pytest.MonkeyPatch) -> None:
         "stream",
         "api_tokens",
         "webhooks",
+        "tickets",
     ]:
         install_router_module(f"src.routers.{name}", f"src.routers.{name}")
 
@@ -363,6 +364,13 @@ class TestRootRouter:
             "get_authenticated_non_api_token_user",
             "require_plan_pro_api_access",
         ]
+
+        # Help & Support tickets have no public endpoints: anonymous callers and
+        # API tokens are rejected at the router level.
+        tickets = next(call for call in calls if call["router_name"] == "src.routers.tickets")
+        assert tickets["prefix"] == "/tickets"
+        assert tickets["tags"] == ["tickets"]
+        assert _dependency_names(tickets) == ["get_authenticated_non_api_token_user"]
 
         custom_domains_public = next(
             call

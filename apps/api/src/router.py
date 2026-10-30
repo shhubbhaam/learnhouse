@@ -46,6 +46,7 @@ from src.security.api_token_utils import (
     require_non_api_token_user,
 )
 from src.security.features_utils.plan_check import require_plan, require_plan_for_boards, require_plan_for_certifications, require_plan_for_community, require_plan_for_usergroups, require_plan_for_playgrounds
+from src.routers import tickets as tickets_router_module
 
 
 v1_router = APIRouter(prefix="/api/v1")
@@ -420,4 +421,13 @@ v1_router.include_router(
     prefix="/stream",
     tags=["stream"],
     dependencies=[Depends(get_non_api_token_user)]
+)
+
+# Help & Support tickets. No public endpoints: requires a real session and
+# rejects API tokens. Org membership / staff checks happen in the service.
+v1_router.include_router(
+    tickets_router_module.router,
+    prefix="/tickets",
+    tags=["tickets"],
+    dependencies=[Depends(require_authenticated_user)],
 )
