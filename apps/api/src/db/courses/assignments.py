@@ -121,6 +121,10 @@ class AssignmentRead(AssignmentBase):
     # whenever a corrigé exists.
     has_solution: Optional[bool] = None
     solution_unlocked: Optional[bool] = None
+    # Course-level grading placement (read-only here).
+    grade_category_id: Optional[int] = None
+    category_weight: Optional[float] = None
+    never_drop: Optional[bool] = None
 
 
 class AssignmentUpdate(SQLModel):
@@ -157,6 +161,7 @@ class Assignment(AssignmentBase, table=True):
     __table_args__ = (
         Index("ix_assignment_course_id", "course_id"),
         Index("ix_assignment_org_id", "org_id"),
+        Index("ix_assignment_grade_category_id", "grade_category_id"),
     )
 
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -176,6 +181,23 @@ class Assignment(AssignmentBase, table=True):
     activity_id: int = Field(
         sa_column=Column("activity_id", ForeignKey("activity.id", ondelete="CASCADE"))
     )
+
+    # Course-level grading (see src/db/courses/course_grading.py). Table-only on
+    # purpose: they are set through PUT /courses/{uuid}/grading, which checks the
+    # category belongs to this course, never through assignment create/update.
+    # NULL category = uncategorised: does not count toward a weighted grade.
+    grade_category_id: Optional[int] = Field(
+        default=None,
+        sa_column=Column(
+            "grade_category_id",
+            ForeignKey("coursegradecategory.id", ondelete="SET NULL"),
+            nullable=True,
+        ),
+    )
+    # Weight of this assignment inside its category (default 1 = equal share).
+    category_weight: Optional[float] = Field(default=1.0)
+    # Never discarded by the category's drop_lowest rule.
+    never_drop: Optional[bool] = Field(default=False)
 
 
 ## Assignment ##
@@ -476,3 +498,9 @@ class AssignmentUserSubmission(AssignmentUserSubmissionBase, table=True):
             "assignment_id", ForeignKey("assignment.id", ondelete="CASCADE")
         )
     )
+
+
+# Register the course grading tables in the same metadata so the
+# assignment.grade_category_id foreign key always resolves (create_all in tests
+# and the app imports this module without necessarily importing that one).
+from src.db.courses import course_grading as _course_grading  # noqa: E402,F401

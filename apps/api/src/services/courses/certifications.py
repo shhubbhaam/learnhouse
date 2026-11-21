@@ -653,7 +653,76 @@ async def are_course_assignments_passed(
     db_session: AsyncSession,
 ) -> bool:
     """
-    Certificate eligibility gate: returns True iff EVERY assignment activity in
+    Certificate eligibility gate, following the course's certificate rule.
+
+    - ALL_ASSIGNMENTS (default, and the only rule for a course that never opted
+      into weighted grading): every graded assignment must be passed; see
+      :func:`_all_graded_assignments_passed`.
+    - FINAL_GRADE: the weighted course grade must be complete (no assignment
+      still pending) and at or above the course pass mark, and every formative
+      assignment handed in.
+    - BOTH: both of the above.
+
+    Every certificate call site goes through here, so switching a course's rule
+    changes issuance, reissue and revocation together.
+    """
+    from src.db.courses.course_grading import CertificateRuleEnum, GradingModeEnum
+    from src.services.courses.course_grading import (
+        compute_course_grade,
+        get_grading_settings,
+    )
+
+    settings = await get_grading_settings(course_id, db_session)
+    rule = settings.certificate_rule
+    if settings.grading_mode != GradingModeEnum.WEIGHTED:
+        rule = CertificateRuleEnum.ALL_ASSIGNMENTS
+
+    if rule in (CertificateRuleEnum.ALL_ASSIGNMENTS, CertificateRuleEnum.BOTH):
+        if not await _all_graded_assignments_passed(user_id, course_id, db_session):
+            return False
+        if rule == CertificateRuleEnum.ALL_ASSIGNMENTS:
+            return True
+
+    # FINAL_GRADE (or the second half of BOTH).
+    if not await _formative_assignments_handed_in(user_id, course_id, db_session):
+        return False
+    grade = await compute_course_grade(course_id, user_id, db_session)
+    return bool(grade["complete"] and grade["passed"])
+
+
+async def _formative_assignments_handed_in(
+    user_id: int,
+    course_id: int,
+    db_session: AsyncSession,
+) -> bool:
+    """True iff every formative (ungraded) assignment in the course is handed in."""
+    from src.db.courses.assignments import AssignmentUserSubmission
+    from src.services.courses.activities.assignments import _HANDED_IN_STATUSES
+    from src.services.courses.course_grading import get_course_assignments
+
+    formative = [
+        a for a in await get_course_assignments(course_id, db_session)
+        if getattr(a, "ungraded", False)
+    ]
+    if not formative:
+        return True
+    subs = (await db_session.execute(
+        select(AssignmentUserSubmission).where(
+            AssignmentUserSubmission.user_id == user_id,
+            AssignmentUserSubmission.assignment_id.in_([a.id for a in formative]),
+        )
+    )).scalars().all()
+    handed_in = {s.assignment_id for s in subs if s.submission_status in _HANDED_IN_STATUSES}
+    return all(a.id in handed_in for a in formative)
+
+
+async def _all_graded_assignments_passed(
+    user_id: int,
+    course_id: int,
+    db_session: AsyncSession,
+) -> bool:
+    """
+    The ALL_ASSIGNMENTS rule: returns True iff EVERY assignment activity in
     the course has been graded AND passed by the user.
 
     - A course with no assignments returns True (completion alone certifies).
