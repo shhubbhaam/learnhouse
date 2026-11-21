@@ -701,7 +701,29 @@
     },
     "sign_in_to_see_courses": "Log in to see your courses",
     "sign_in_to_see_courses_description": "Courses in this academy may only be visible once you are signed in.",
-    "browse_all_courses": "Browse all courses"
+    "browse_all_courses": "Browse all courses",
+    "grade_card": {
+      "title": "Your grade",
+      "no_grades_yet": "No graded work yet. Your course grade appears once an assignment is graded.",
+      "pass_mark": "Pass mark {{value}}",
+      "weight": "{{value}} of grade",
+      "standing": {
+        "passed": "Passed",
+        "failed": "Not passed",
+        "on_track": "On track",
+        "below": "Below pass mark"
+      },
+      "not_final_one": "Not final yet: {{count}} assignment still to be graded or due.",
+      "not_final_other": "Not final yet: {{count}} assignments still to be graded or due.",
+      "drop_applied_one": "Your lowest score is dropped.",
+      "drop_applied_other": "Your {{count}} lowest scores are dropped.",
+      "drop_applied_zero": "No score dropped.",
+      "drop_later_one": "Your lowest score will be dropped once every assignment here is done.",
+      "drop_later_other": "Your {{count}} lowest scores will be dropped once every assignment here is done.",
+      "pending": "Pending",
+      "missing": "Missing · 0%",
+      "dropped": "Dropped"
+    }
   },
   "communities": {
     "title": "Communities",
@@ -2129,7 +2151,8 @@
           "contributors": "Contributors",
           "seo": "SEO",
           "certification": "Certification",
-          "analytics": "Analytics"
+          "analytics": "Analytics",
+          "grading": "Grading"
         },
         "access_denied": {
           "title": "Access Denied",
@@ -2853,6 +2876,108 @@
           "descriptions": {
             "scorm": "SCORM-compliant learning package"
           }
+        }
+      },
+      "grading": {
+        "title": "Course grading",
+        "subtitle": "Decide how assignments add up to one course grade.",
+        "save": "Save grading",
+        "saving": "Saving…",
+        "discard": "Discard changes",
+        "unsaved": "Unsaved changes",
+        "errors": {
+          "loading": "Could not load the grading setup for this course."
+        },
+        "toasts": {
+          "saved": "Grading saved",
+          "error": "Could not save the grading setup",
+          "certificates_changed": "Certificates re-checked: {{issued}} issued, {{revoked}} revoked."
+        },
+        "mode": {
+          "title": "Grading method",
+          "subtitle": "How assignments count toward the course.",
+          "all_must_pass": "Every assignment must pass",
+          "all_must_pass_hint": "Each assignment is graded on its own and there is no course grade. This is how courses work today.",
+          "weighted": "Weighted categories",
+          "weighted_hint": "Group assignments into categories with weights (e.g. Quizzes 20%, Project 30%) and compute one course grade."
+        },
+        "categories": {
+          "title": "Categories",
+          "subtitle": "Each category's weight is its share of the course grade. Weights must add up to 100%.",
+          "default_name": "Assignments",
+          "name": "Category",
+          "name_placeholder": "e.g. Quizzes",
+          "unnamed": "Unnamed category",
+          "weight": "Weight",
+          "drop_lowest": "Drop lowest",
+          "drop_lowest_hint": "Ignore this many of a learner's lowest scores, once they have finished every assignment in the category.",
+          "counted": "Counts",
+          "best_of": "Best {{kept}} of {{count}}",
+          "all_of_one": "{{count}} assignment",
+          "all_of_other": "All {{count}} assignments",
+          "add": "Add category",
+          "remove": "Remove category",
+          "split_evenly": "Split weights evenly",
+          "total": "Total {{total}}%"
+        },
+        "assignments": {
+          "title": "Assignments",
+          "subtitle": "Put each assignment in a category. Weight sets its share inside the category (1 = equal share, 2 = counts double).",
+          "assignment": "Assignment",
+          "category": "Category",
+          "uncategorised": "Not counted",
+          "weight": "Weight",
+          "weight_hint": "Share inside its category: 1 = equal, 2 = counts double.",
+          "never_drop": "Never drop",
+          "never_drop_hint": "Always counts, even when the category drops the lowest scores.",
+          "formative": "Formative — never graded, not part of the course grade",
+          "empty": "This course has no assignments yet.",
+          "uncategorised_warning_one": "{{count}} graded assignment is not in a category and will not count toward the course grade.",
+          "uncategorised_warning_other": "{{count}} graded assignments are not in a category and will not count toward the course grade."
+        },
+        "final": {
+          "title": "Course grade",
+          "subtitle": "How the course grade is shown, when it passes, and how missing work counts.",
+          "grade_type": "Show the course grade as",
+          "pass_mark": "Pass mark",
+          "pass_mark_placeholder": "Default ({{default}}%)",
+          "missing_work": "Work not handed in",
+          "missing": {
+            "zero_after_due": "Counts as 0% after the due date",
+            "zero_after_due_hint": "A skipped assignment scores 0 once its due date passes. With drop lowest, it can be the one dropped.",
+            "exclude": "Ignored until graded",
+            "exclude_hint": "Only graded work counts. Missing assignments never lower the grade."
+          }
+        },
+        "issues": {
+          "no_categories": "Add at least one category to use weighted grading.",
+          "weights_total": "Category weights add up to {{total}}%. They must total 100%.",
+          "category_name_required": "Category {{index}} needs a name.",
+          "category_name_duplicate": "Two categories are called \"{{name}}\". Names must be unique.",
+          "category_weight_invalid": "\"{{name}}\" needs a weight between 0 and 100.",
+          "drop_too_high": "\"{{name}}\" drops {{drop}} of {{count}} assignments. At least one must count.",
+          "assignment_weight_invalid": "\"{{title}}\" needs a weight of 0 or more.",
+          "pass_mark_invalid": "The pass mark must be between 0 and 100."
+        },
+        "certificate_rule": {
+          "title": "Who earns the certificate",
+          "subtitle": "Learners must also complete every activity in the course. Changing this re-checks every learner's certificate.",
+          "all_assignments": "Pass every assignment",
+          "all_assignments_hint": "Each graded assignment must reach its own pass mark.",
+          "final_grade": "Pass the course grade",
+          "final_grade_hint": "The weighted course grade must reach the course pass mark, once every assignment is graded.",
+          "both": "Both",
+          "both_hint": "Pass every assignment and the course grade.",
+          "needs_weighted": "The course-grade options need weighted grading.",
+          "open_grading": "Open grading settings",
+          "saved": "Certificate rule saved"
+        },
+        "assignment_fields": {
+          "title": "Course grade",
+          "description": "Which category this assignment counts in, and how much.",
+          "category_option": "{{name}} ({{weight}}%)",
+          "drop_note": "(this category drops the lowest {{count}})",
+          "save_error": "The assignment was saved, but its course-grade category could not be: {{message}}"
         }
       }
     },

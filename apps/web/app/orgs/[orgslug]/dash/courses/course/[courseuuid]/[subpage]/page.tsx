@@ -3,7 +3,7 @@ import React, { use, useEffect } from 'react';
 import { CourseProvider } from '../../../../../../../../components/Contexts/CourseContext'
 import { CourseOverviewTop } from '@components/Dashboard/Misc/CourseOverviewTop'
 import { motion } from 'motion/react'
-import { GalleryVerticalEnd, Globe, Info, UserPen, Award, Lock, Search } from 'lucide-react'
+import { GalleryVerticalEnd, Globe, Info, UserPen, Award, Lock, Search, Scale } from 'lucide-react'
 import { ChartBar } from '@phosphor-icons/react'
 import EditCourseStructure from '@components/Dashboard/Pages/Course/EditCourseStructure/EditCourseStructure'
 import EditCourseGeneral from '@components/Dashboard/Pages/Course/EditCourseGeneral/EditCourseGeneral'
@@ -11,6 +11,7 @@ import EditCourseAccess from '@components/Dashboard/Pages/Course/EditCourseAcces
 import EditCourseContributors from '@components/Dashboard/Pages/Course/EditCourseContributors/EditCourseContributors'
 import EditCourseCertification from '@components/Dashboard/Pages/Course/EditCourseCertification/EditCourseCertification'
 import EditCourseSEO from '@components/Dashboard/Pages/Course/EditCourseSEO/EditCourseSEO'
+import EditCourseGrading from '@components/Dashboard/Pages/Course/EditCourseGrading/EditCourseGrading'
 import { useCourseRights } from '@hooks/useCourseRights'
 import { useRouter } from 'next/navigation'
 import { getUriWithOrg } from '@services/config/config';
@@ -76,6 +77,13 @@ function CourseOverviewPage(props: { params: Promise<CourseOverviewParams> }) {
       href: `/dash/courses/course/${params.courseuuid}/seo`,
       requiredPermission: 'update' as const,
       requiresPlan: 'standard' as PlanLevel
+    },
+    {
+      key: 'grading',
+      label: t('dashboard.courses.settings.tabs.grading'),
+      icon: Scale,
+      href: `/dash/courses/course/${params.courseuuid}/grading`,
+      requiredPermission: 'update' as const
     },
     {
       key: 'certification',
@@ -187,6 +195,12 @@ function CourseOverviewPage(props: { params: Promise<CourseOverviewParams> }) {
                 <FeatureGate feature="seo">
                   <EditCourseSEO orgslug={params.orgslug} />
                 </FeatureGate>
+              </>
+            ) : null}
+            {!rightsLoading && params.subpage == 'grading' && hasPermission('update') ? (
+              <>
+                <div className="h-6" />
+                <EditCourseGrading orgslug={params.orgslug} />
               </>
             ) : null}
             {!rightsLoading && params.subpage == 'certification' && hasPermission('create_certifications') ? (

@@ -28,6 +28,7 @@ import { queryKeys } from '@/lib/query/keys';
 import { getCourseCertifications } from '@services/courses/certifications';
 import toast from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
+import CertificateRuleSection from '../EditCourseGrading/CertificateRuleSection';
 
 type EditCourseCertificationProps = {
   orgslug: string
@@ -322,6 +323,10 @@ function EditCourseCertification(_props: EditCourseCertificationProps) {
                 <AlertTriangle size={18} />
                 <div className="font-bold text-sm">{error}</div>
               </div>
+            )}
+
+            {formik.values.enable_certification && hasExistingCertification && courseStructure?.course_uuid && (
+              <CertificateRuleSection courseUuid={courseStructure.course_uuid} orgslug={_props.orgslug} />
             )}
 
             {/* Certification Configuration - Only show if enabled and has existing certification */}

@@ -79,6 +79,11 @@ export const queryKeys = {
   ai: {
     ragSessions: (orgSlug: string) => ['ai', 'rag', 'sessions', orgSlug] as const,
   },
+  grading: {
+    setup: (courseUuid: string) => ['grading', courseUuid, 'setup'] as const,
+    gradebook: (courseUuid: string) => ['grading', courseUuid, 'gradebook'] as const,
+    mine: (courseUuid: string) => ['grading', courseUuid, 'me'] as const,
+  },
   certifications: {
     detail: (uuid: string) => ['certification', uuid] as const,
     byCourse: (courseUuid: string) => ['certification', 'byCourse', courseUuid] as const,

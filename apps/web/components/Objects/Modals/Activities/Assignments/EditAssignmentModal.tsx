@@ -11,6 +11,13 @@ import * as Form from '@radix-ui/react-form';
 import { useFormik } from 'formik';
 import Modal from '@components/Objects/StyledElements/Modal/Modal';
 import { useTranslation } from 'react-i18next';
+import { useCourseGrading, useSaveCourseGrading } from '@/hooks/queries/useCourseGrading';
+import AssignmentGradingFields, {
+    type AssignmentPlacement,
+    payloadWithPlacement,
+    placementOf,
+    samePlacement,
+} from '@components/Dashboard/Pages/Course/EditCourseGrading/AssignmentGradingFields';
 
 // Same input class used by the create-assignment modal, so both forms look
 // identical to the user.
@@ -62,6 +69,8 @@ interface Assignment {
     solution_file?: string | null;
     solution_reveal?: SolutionReveal;
     assignment_tasks?: any[];
+    // Full `course_...` uuid; enables the course-grade (category) fields.
+    course_uuid?: string;
 }
 
 interface EditAssignmentFormProps {
@@ -166,6 +175,20 @@ const EditAssignmentForm: React.FC<EditAssignmentFormProps> = ({
     const [solutionFile, setSolutionFile] = React.useState<File | null>(null);
     const [removeSolutionFile, setRemoveSolutionFile] = React.useState(false);
 
+    // Course-level grading placement (category, weight inside it, never drop).
+    // Stored with the course's grading setup, so it saves through the grading
+    // endpoint after the assignment itself, and only when it changed.
+    const { data: grading } = useCourseGrading(assignment.course_uuid);
+    const saveGrading = useSaveCourseGrading(assignment.course_uuid);
+    const savedPlacement = React.useMemo(
+        () => placementOf(grading, assignment.assignment_uuid),
+        [grading, assignment.assignment_uuid]
+    );
+    const [placement, setPlacement] = React.useState<AssignmentPlacement | null>(null);
+    React.useEffect(() => {
+        setPlacement(savedPlacement);
+    }, [savedPlacement]);
+
     const formik = useFormik({
         initialValues: {
             title: assignment.title || '',
@@ -250,6 +273,24 @@ const EditAssignmentForm: React.FC<EditAssignmentFormProps> = ({
                             toast.error(
                                 t('dashboard.assignments.modals.edit.toasts.solution_file_error', {
                                     defaultValue: "The model answer document couldn't be uploaded.",
+                                })
+                            );
+                        }
+                    }
+                    if (
+                        grading &&
+                        placement &&
+                        !values.ungraded &&
+                        !samePlacement(placement, savedPlacement)
+                    ) {
+                        try {
+                            await saveGrading.mutateAsync(
+                                payloadWithPlacement(grading, assignment.assignment_uuid, placement)
+                            );
+                        } catch (e: any) {
+                            toast.error(
+                                t('dashboard.courses.grading.assignment_fields.save_error', {
+                                    message: e?.message ?? '',
                                 })
                             );
                         }
@@ -470,6 +511,10 @@ const EditAssignmentForm: React.FC<EditAssignmentFormProps> = ({
                     )}
                 </div>
             </div>
+
+            {grading?.grading_mode === 'WEIGHTED' && placement && !formik.values.ungraded && (
+                <AssignmentGradingFields grading={grading} value={placement} onChange={setPlacement} />
+            )}
 
             {/* Model answer ("corrigé") */}
             <SolutionSection

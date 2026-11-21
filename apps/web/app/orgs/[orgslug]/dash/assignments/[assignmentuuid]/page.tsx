@@ -266,6 +266,7 @@ function PublishingState() {
                     assignment={{
                         ...assignment?.assignment_object,
                         assignment_tasks: assignment?.assignment_tasks,
+                        course_uuid: assignment?.course_object?.course_uuid,
                     }}
                     accessToken={access_token}
                 />
