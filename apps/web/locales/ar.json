@@ -854,6 +854,15 @@
       "view_all": "عرض الكل",
       "no_discussions": "لا توجد نقاشات بعد",
       "start_first": "ابدأ أول نقاش"
+    },
+    "media": {
+      "add_image": "إضافة صورة",
+      "remove_image": "إزالة الصورة",
+      "uploading": "جارٍ رفع الصورة...",
+      "upload_failed": "فشل رفع الصورة.",
+      "unsupported_type": "يمكن رفع صور JPEG وPNG وGIF وWebP فقط.",
+      "too_large": "يجب ألا يتجاوز حجم الصورة 10 ميغابايت.",
+      "too_many": "يمكنك إضافة ما يصل إلى 10 صور لكل منشور."
     }
   },
   "podcasts": {
@@ -2099,7 +2108,9 @@
             "saving": "جاري حفظ إعدادات الإشراف...",
             "save_success": "تم حفظ إعدادات الإشراف",
             "save_error": "فشل حفظ إعدادات الإشراف"
-          }
+          },
+          "allow_images_label": "السماح برفع الصور",
+          "allow_images_description": "السماح للأعضاء بإرفاق صور (JPEG وPNG وGIF وWebP بحجم يصل إلى 10 ميغابايت، و10 صور لكل منشور) بالمناقشات والردود. تُخزَّن الصور مع هذا المجتمع. مفعّل افتراضيًا."
         },
         "modals": {
           "create": {
@@ -4934,11 +4945,45 @@
         "users_analytics": {
           "description": "نشاط التعلم لكل طالب والسجل التدقيقي",
           "keywords": "تحليلات، تدقيق، طالب، تقدم، نشاط، تصدير، قانوني، امتثال"
+        },
+        "support": {
+          "description": "فرز تذاكر دعم المتعلمين وحلها",
+          "keywords": "دعم, تذاكر, مساعدة, مكتب المساعدة, مشكلات"
         }
       }
     },
     "developers": {
       "breadcrumb": "المطورون"
+    },
+    "support": {
+      "title": "الدعم",
+      "access_denied": "تذاكر الدعم متاحة لمسؤولي المؤسسة والمشرفين فقط.",
+      "filter_status": "الحالة",
+      "filter_priority": "الأولوية",
+      "filter_category": "الفئة",
+      "all": "الكل",
+      "assigned_to_me": "المسندة إليّ",
+      "unassigned": "غير مُسندة",
+      "empty": "لا توجد تذاكر تطابق هذه الفلاتر",
+      "showing": "عرض {{from}}–{{to}} من {{total}}",
+      "previous": "السابق",
+      "next": "التالي",
+      "select_ticket": "اختر تذكرة لعرض التفاصيل",
+      "learner": "المتعلم",
+      "assignee": "المسؤول",
+      "assign_me": "إسناد إليّ",
+      "unassign": "إلغاء الإسناد",
+      "resolve": "حل",
+      "resolve_title": "حل التذكرة",
+      "resolve_note": "ملاحظة الحل",
+      "resolve_note_hint": "سيرى المتعلم هذه الملاحظة في تذكرته.",
+      "resolve_confirm": "وضع علامة كمحلولة",
+      "close": "إغلاق التذكرة",
+      "close_confirm": "هل تريد إغلاق هذه التذكرة؟ لن يتمكن أحد من الرد.",
+      "reopen": "إعادة فتح",
+      "updated": "تم تحديث التذكرة",
+      "cancel": "إلغاء",
+      "back": "العودة إلى القائمة"
     }
   },
   "editor": {
@@ -6708,6 +6753,89 @@
     "pricing": {
       "from": "ابتداءً من",
       "subscription": "اشتراك"
+    }
+  },
+  "tickets": {
+    "status": {
+      "OPEN": "مفتوحة",
+      "IN_PROGRESS": "قيد المعالجة",
+      "RESOLVED": "تم الحل",
+      "CLOSED": "مغلقة",
+      "unknown": "غير معروف"
+    },
+    "priority": {
+      "LOW": "منخفضة",
+      "MEDIUM": "متوسطة",
+      "HIGH": "عالية",
+      "URGENT": "عاجلة",
+      "unknown": "غير معروف"
+    },
+    "category": {
+      "TECHNICAL": "تقنية",
+      "COURSE_CONTENT": "محتوى الدورة",
+      "BILLING": "الفوترة",
+      "ACCOUNT": "الحساب",
+      "OTHER": "أخرى"
+    },
+    "thread": {
+      "support_team": "فريق الدعم",
+      "internal": "داخلي",
+      "you": "أنت"
+    },
+    "reply": {
+      "placeholder": "اكتب ردًا…",
+      "send": "إرسال",
+      "internal_toggle": "ملاحظة داخلية",
+      "internal_send": "إضافة ملاحظة داخلية",
+      "reopen_hint": "هل ما زلت تواجه مشكلة؟ سيؤدي الرد إلى إعادة فتح هذه التذكرة.",
+      "closed": "هذه التذكرة مغلقة. أنشئ تذكرة جديدة إذا كنت لا تزال بحاجة إلى المساعدة.",
+      "sent": "تم إرسال الرد"
+    },
+    "resolution": "الحل",
+    "not_found": "التذكرة غير موجودة",
+    "load_error": "تعذّر تحميل التذاكر.",
+    "retry": "إعادة المحاولة",
+    "messages_count": "{{count}} رسائل",
+    "updated": "آخر تحديث {{time}}",
+    "opened": "فُتحت {{time}}",
+    "course": "الدورة",
+    "attachments": {
+      "add": "إرفاق صورة",
+      "remove": "إزالة الصورة",
+      "uploading": "جارٍ رفع الصورة…",
+      "unsupported_type": "يمكن إرفاق صور JPEG وPNG وGIF وWebP فقط.",
+      "too_large": "يجب ألا يتجاوز حجم الصورة 10 ميغابايت.",
+      "too_many": "يمكنك إرفاق ما يصل إلى 5 صور.",
+      "upload_failed": "فشل رفع الصورة.",
+      "partial_failure": "تم إنشاء تذكرتك، لكن تعذّر رفع بعض الصور. يمكنك إضافتها في رد.",
+      "view": "عرض الصورة",
+      "image_unavailable": "الصورة غير متاحة",
+      "internal_locked": "أزل الصور للتبديل بين الرد والملاحظة الداخلية."
+    }
+  },
+  "help": {
+    "title": "المساعدة والدعم",
+    "description": "احصل على المساعدة بخصوص حسابك ودوراتك",
+    "sign_in": "سجّل الدخول للتواصل مع الدعم.",
+    "tab_my_tickets": "تذاكري",
+    "tab_raise": "إنشاء تذكرة",
+    "back": "العودة إلى تذاكري",
+    "empty": "لم تنشئ أي تذاكر بعد",
+    "raise_new": "إنشاء تذكرة جديدة",
+    "form": {
+      "subject": "الموضوع",
+      "subject_placeholder": "ملخص قصير للمشكلة",
+      "category": "الفئة",
+      "course": "الدورة المرتبطة",
+      "course_none": "لا شيء",
+      "description": "الوصف",
+      "description_placeholder": "ماذا حدث؟ وما الذي كنت تتوقعه؟ خطوات إعادة إنتاج المشكلة تساعد كثيرًا.",
+      "submit": "إرسال التذكرة",
+      "submitted": "تم إرسال التذكرة",
+      "errors": {
+        "too_short": "قصير جدًا",
+        "too_long": "طويل جدًا"
+      }
     }
   }
 }

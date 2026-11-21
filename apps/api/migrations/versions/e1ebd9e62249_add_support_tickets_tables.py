@@ -27,56 +27,81 @@ PRIORITY_VALUES = ('LOW', 'MEDIUM', 'HIGH', 'URGENT')
 CATEGORY_VALUES = ('TECHNICAL', 'COURSE_CONTENT', 'BILLING', 'ACCOUNT', 'OTHER')
 
 
+def _existing(bind):
+    """Tables and indexes already present.
+
+    The API's startup runs SQLModel.metadata.create_all, so a dev server started
+    before this migration has already created these tables. Skip what exists.
+    """
+    inspector = sa.inspect(bind)
+    tables = set(inspector.get_table_names())
+    indexes = {
+        (t, ix["name"]) for t in tables for ix in inspector.get_indexes(t)
+    }
+    return tables, indexes
+
+
+
 def upgrade() -> None:
     bind = op.get_bind()
+    tables, indexes = _existing(bind)
     sa.Enum(*STATUS_VALUES, name='ticketstatusenum').create(bind, checkfirst=True)
     sa.Enum(*PRIORITY_VALUES, name='ticketpriorityenum').create(bind, checkfirst=True)
     sa.Enum(*CATEGORY_VALUES, name='ticketcategoryenum').create(bind, checkfirst=True)
 
-    op.create_table(
-        'supportticket',
-        sa.Column('id', sa.Integer(), nullable=False),
-        sa.Column('ticket_uuid', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-        sa.Column('subject', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-        sa.Column('description', sa.Text(), nullable=False),
-        sa.Column('category', postgresql.ENUM(*CATEGORY_VALUES, name='ticketcategoryenum', create_type=False), nullable=False),
-        sa.Column('priority', postgresql.ENUM(*PRIORITY_VALUES, name='ticketpriorityenum', create_type=False), nullable=False),
-        sa.Column('status', postgresql.ENUM(*STATUS_VALUES, name='ticketstatusenum', create_type=False), nullable=False),
-        sa.Column('resolution_note', sa.Text(), nullable=True),
-        sa.Column('org_id', sa.Integer(), nullable=False),
-        sa.Column('user_id', sa.Integer(), nullable=False),
-        sa.Column('course_id', sa.Integer(), nullable=True),
-        sa.Column('assigned_to', sa.Integer(), nullable=True),
-        sa.Column('creation_date', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-        sa.Column('update_date', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-        sa.ForeignKeyConstraint(['org_id'], ['organization.id'], ondelete='CASCADE'),
-        sa.ForeignKeyConstraint(['user_id'], ['user.id'], ondelete='CASCADE'),
-        sa.ForeignKeyConstraint(['course_id'], ['course.id'], ondelete='SET NULL'),
-        sa.ForeignKeyConstraint(['assigned_to'], ['user.id'], ondelete='SET NULL'),
-        sa.PrimaryKeyConstraint('id'),
-    )
-    op.create_index(op.f('ix_supportticket_ticket_uuid'), 'supportticket', ['ticket_uuid'], unique=True)
-    op.create_index(op.f('ix_supportticket_org_id'), 'supportticket', ['org_id'], unique=False)
-    op.create_index(op.f('ix_supportticket_user_id'), 'supportticket', ['user_id'], unique=False)
-    op.create_index(op.f('ix_supportticket_status'), 'supportticket', ['status'], unique=False)
-    op.create_index('ix_supportticket_org_status', 'supportticket', ['org_id', 'status'], unique=False)
+    if 'supportticket' not in tables:
+        op.create_table(
+            'supportticket',
+            sa.Column('id', sa.Integer(), nullable=False),
+            sa.Column('ticket_uuid', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+            sa.Column('subject', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+            sa.Column('description', sa.Text(), nullable=False),
+            sa.Column('category', postgresql.ENUM(*CATEGORY_VALUES, name='ticketcategoryenum', create_type=False), nullable=False),
+            sa.Column('priority', postgresql.ENUM(*PRIORITY_VALUES, name='ticketpriorityenum', create_type=False), nullable=False),
+            sa.Column('status', postgresql.ENUM(*STATUS_VALUES, name='ticketstatusenum', create_type=False), nullable=False),
+            sa.Column('resolution_note', sa.Text(), nullable=True),
+            sa.Column('org_id', sa.Integer(), nullable=False),
+            sa.Column('user_id', sa.Integer(), nullable=False),
+            sa.Column('course_id', sa.Integer(), nullable=True),
+            sa.Column('assigned_to', sa.Integer(), nullable=True),
+            sa.Column('creation_date', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+            sa.Column('update_date', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+            sa.ForeignKeyConstraint(['org_id'], ['organization.id'], ondelete='CASCADE'),
+            sa.ForeignKeyConstraint(['user_id'], ['user.id'], ondelete='CASCADE'),
+            sa.ForeignKeyConstraint(['course_id'], ['course.id'], ondelete='SET NULL'),
+            sa.ForeignKeyConstraint(['assigned_to'], ['user.id'], ondelete='SET NULL'),
+            sa.PrimaryKeyConstraint('id'),
+        )
+    if ('supportticket', 'ix_supportticket_ticket_uuid') not in indexes:
+        op.create_index(op.f('ix_supportticket_ticket_uuid'), 'supportticket', ['ticket_uuid'], unique=True)
+    if ('supportticket', 'ix_supportticket_org_id') not in indexes:
+        op.create_index(op.f('ix_supportticket_org_id'), 'supportticket', ['org_id'], unique=False)
+    if ('supportticket', 'ix_supportticket_user_id') not in indexes:
+        op.create_index(op.f('ix_supportticket_user_id'), 'supportticket', ['user_id'], unique=False)
+    if ('supportticket', 'ix_supportticket_status') not in indexes:
+        op.create_index(op.f('ix_supportticket_status'), 'supportticket', ['status'], unique=False)
+    if ('supportticket', 'ix_supportticket_org_status') not in indexes:
+        op.create_index('ix_supportticket_org_status', 'supportticket', ['org_id', 'status'], unique=False)
 
-    op.create_table(
-        'ticketmessage',
-        sa.Column('id', sa.Integer(), nullable=False),
-        sa.Column('message_uuid', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-        sa.Column('ticket_id', sa.Integer(), nullable=False),
-        sa.Column('author_id', sa.Integer(), nullable=False),
-        sa.Column('content', sa.Text(), nullable=False),
-        sa.Column('is_staff', sa.Boolean(), nullable=False, server_default=sa.false()),
-        sa.Column('is_internal', sa.Boolean(), nullable=False, server_default=sa.false()),
-        sa.Column('creation_date', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-        sa.ForeignKeyConstraint(['ticket_id'], ['supportticket.id'], ondelete='CASCADE'),
-        sa.ForeignKeyConstraint(['author_id'], ['user.id'], ondelete='CASCADE'),
-        sa.PrimaryKeyConstraint('id'),
-    )
-    op.create_index(op.f('ix_ticketmessage_message_uuid'), 'ticketmessage', ['message_uuid'], unique=True)
-    op.create_index(op.f('ix_ticketmessage_ticket_id'), 'ticketmessage', ['ticket_id'], unique=False)
+    if 'ticketmessage' not in tables:
+        op.create_table(
+            'ticketmessage',
+            sa.Column('id', sa.Integer(), nullable=False),
+            sa.Column('message_uuid', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+            sa.Column('ticket_id', sa.Integer(), nullable=False),
+            sa.Column('author_id', sa.Integer(), nullable=False),
+            sa.Column('content', sa.Text(), nullable=False),
+            sa.Column('is_staff', sa.Boolean(), nullable=False, server_default=sa.false()),
+            sa.Column('is_internal', sa.Boolean(), nullable=False, server_default=sa.false()),
+            sa.Column('creation_date', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+            sa.ForeignKeyConstraint(['ticket_id'], ['supportticket.id'], ondelete='CASCADE'),
+            sa.ForeignKeyConstraint(['author_id'], ['user.id'], ondelete='CASCADE'),
+            sa.PrimaryKeyConstraint('id'),
+        )
+    if ('ticketmessage', 'ix_ticketmessage_message_uuid') not in indexes:
+        op.create_index(op.f('ix_ticketmessage_message_uuid'), 'ticketmessage', ['message_uuid'], unique=True)
+    if ('ticketmessage', 'ix_ticketmessage_ticket_id') not in indexes:
+        op.create_index(op.f('ix_ticketmessage_ticket_id'), 'ticketmessage', ['ticket_id'], unique=False)
 
 
 def downgrade() -> None:

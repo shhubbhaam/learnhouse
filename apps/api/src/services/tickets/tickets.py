@@ -39,10 +39,16 @@ from src.db.tickets.tickets import (
     TicketPriorityEnum,
     TicketStatusEnum,
 )
+from src.db.tickets.ticket_attachments import TicketAttachmentRead
 from src.db.user_organizations import UserOrganization
 from src.db.users import AnonymousUser, APITokenUser, PublicUser, User, UserReadAuthor
 from src.security.rbac.constants import ADMIN_OR_MAINTAINER_ROLE_IDS
 from src.security.superadmin import is_user_superadmin
+from src.services.tickets.attachments import (
+    attachments_for,
+    claim_pending_attachments,
+    read_attachments,
+)
 
 MAX_PAGE_SIZE = 100
 
@@ -84,6 +90,11 @@ async def _is_staff(db_session: AsyncSession, user_id: int, org_id: int) -> bool
         return True
     role_id = await _member_role_id(db_session, user_id, org_id)
     return role_id is not None and role_id in ADMIN_OR_MAINTAINER_ROLE_IDS
+
+
+async def is_ticket_staff(db_session: AsyncSession, user_id: int, org_id: int) -> bool:
+    """Public form of the staff check, used by src/security/ticket_file_access.py."""
+    return await _is_staff(db_session, user_id, org_id)
 
 
 async def _require_member(db_session: AsyncSession, user_id: int, org_id: int) -> None:
@@ -185,8 +196,12 @@ async def _serialize_tickets(
     return out
 
 
-def _serialize_message(msg: TicketMessage, author: Optional[User]) -> TicketMessageRead:
-    return TicketMessageRead(**msg.model_dump(), author=_author(author))
+def _serialize_message(
+    msg: TicketMessage,
+    author: Optional[User],
+    attachments: Optional[List[TicketAttachmentRead]] = None,
+) -> TicketMessageRead:
+    return TicketMessageRead(**msg.model_dump(), author=_author(author), attachments=attachments or [])
 
 
 # ---------------------------------------------------------------------------
@@ -265,9 +280,14 @@ async def get_ticket_detail(
 
     base = (await _serialize_tickets(db_session, [ticket], include_internal=staff))[0]
     authors = await _users_by_id(db_session, [m.author_id for m in messages])
+    ticket_level, by_message = await attachments_for(db_session, ticket, include_internal=staff)
     return SupportTicketDetail(
         **base.model_dump(),
-        messages=[_serialize_message(m, authors.get(m.author_id)) for m in messages],
+        attachments=ticket_level,
+        messages=[
+            _serialize_message(m, authors.get(m.author_id), by_message.get(m.id, []))
+            for m in messages
+        ],
     )
 
 
@@ -284,6 +304,11 @@ async def add_ticket_message(
         raise HTTPException(status_code=409, detail="This ticket is closed. Open a new ticket if you still need help.")
     if msg_in.is_internal and not staff:
         raise HTTPException(status_code=403, detail="Only staff can add internal notes")
+
+    # Validated before anything is written, so a bad uuid leaves no message behind.
+    claimed = await claim_pending_attachments(
+        db_session, ticket, msg_in.attachment_uuids, user_id, msg_in.is_internal
+    )
 
     is_owner = ticket.user_id == user_id
     now = _now()
@@ -305,10 +330,17 @@ async def add_ticket_message(
     ticket.update_date = now
     db_session.add(ticket)
 
+    if claimed:
+        await db_session.flush()  # assigns message.id
+        for row in claimed:
+            row.attached = True
+            row.message_id = message.id
+            db_session.add(row)
+
     await db_session.commit()
     await db_session.refresh(message)
     author = (await _users_by_id(db_session, [user_id])).get(user_id)
-    return _serialize_message(message, author)
+    return _serialize_message(message, author, await read_attachments(db_session, ticket, claimed))
 
 
 # ---------------------------------------------------------------------------

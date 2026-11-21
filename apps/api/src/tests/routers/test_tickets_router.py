@@ -88,3 +88,32 @@ async def test_admin_list_limit_capped(db, org, admin_user):
         r = await c.get(f"/api/v1/tickets/org/{org.id}/admin", params={"limit": 500})
         assert r.status_code == 422
 
+
+
+async def test_attachment_upload_and_reply_over_http(db, org, regular_user, admin_user):
+    from unittest.mock import AsyncMock, patch
+
+    async with await _client(_app(db, regular_user)) as learner:
+        uuid = (await learner.post("/api/v1/tickets/", json=VALID)).json()["ticket_uuid"]
+        with patch("src.services.tickets.attachments.upload_file", new=AsyncMock(return_value="abc_ticket.png")):
+            r = await learner.post(
+                f"/api/v1/tickets/{uuid}/attachments",
+                files={"file": ("shot.png", b"\x89PNG fake", "image/png")},
+                data={"attach_to_ticket": "false"},
+            )
+        assert r.status_code == 200, r.text
+        att = r.json()
+        assert att["file_path"].endswith(f"/tickets/{uuid}/abc_ticket.png")
+
+        r = await learner.post(f"/api/v1/tickets/{uuid}/messages", json={"content": "", "attachment_uuids": [att["attachment_uuid"]]})
+        assert r.status_code == 200, r.text
+        assert r.json()["attachments"][0]["attachment_uuid"] == att["attachment_uuid"]
+
+        # A learner may not upload into an internal note.
+        with patch("src.services.tickets.attachments.upload_file", new=AsyncMock(return_value="x.png")):
+            r = await learner.post(
+                f"/api/v1/tickets/{uuid}/attachments",
+                files={"file": ("n.png", b"x", "image/png")},
+                data={"is_internal": "true"},
+            )
+        assert r.status_code == 403

@@ -7,10 +7,11 @@ src/services/tickets/tickets.py.
 
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, File, Form, Query, UploadFile
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src.core.events.database import get_db_session
+from src.db.tickets.ticket_attachments import TicketAttachmentRead
 from src.db.tickets.ticket_messages import (
     SupportTicketDetail,
     TicketMessageCreate,
@@ -27,6 +28,7 @@ from src.db.tickets.tickets import (
 )
 from src.db.users import PublicUser
 from src.security.auth import get_current_user
+from src.services.tickets.attachments import upload_ticket_attachment
 from src.services.tickets.tickets import (
     MAX_PAGE_SIZE,
     add_ticket_message,
@@ -155,3 +157,31 @@ async def api_reply_to_ticket(
     db_session: AsyncSession = Depends(get_db_session),
 ) -> TicketMessageRead:
     return await add_ticket_message(db_session, ticket_uuid, msg_in, current_user)
+
+
+@router.post(
+    "/{ticket_uuid}/attachments",
+    response_model=TicketAttachmentRead,
+    summary="Upload an image to a ticket",
+    description=(
+        "Upload one image (JPEG, PNG, GIF or WebP, up to 10 MB). By default it is pending until a reply "
+        "includes its attachment_uuid. With attach_to_ticket=true (ticket owner only) it is shown under the "
+        "ticket description immediately. is_internal=true (staff only) stores it for an internal note. "
+        "Files are private to the ticket owner and org staff."
+    ),
+    responses={
+        400: {"description": "Too many images, or invalid file"},
+        403: {"description": "Not allowed to add this kind of image"},
+        404: {"description": "Ticket not found or not visible to the caller"},
+        409: {"description": "Ticket is closed"},
+    },
+)
+async def api_upload_ticket_attachment(
+    ticket_uuid: str,
+    file: UploadFile = File(...),
+    is_internal: bool = Form(False),
+    attach_to_ticket: bool = Form(False),
+    current_user: PublicUser = Depends(get_current_user),
+    db_session: AsyncSession = Depends(get_db_session),
+) -> TicketAttachmentRead:
+    return await upload_ticket_attachment(db_session, ticket_uuid, file, is_internal, attach_to_ticket, current_user)

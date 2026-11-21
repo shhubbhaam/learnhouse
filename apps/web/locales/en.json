@@ -5376,11 +5376,45 @@
         "account_purchases": {
           "description": "Your purchases and subscriptions",
           "keywords": "purchases, subscriptions, billing, history, receipts"
+        },
+        "support": {
+          "description": "Triage and resolve learner support tickets",
+          "keywords": "support, tickets, help, helpdesk, issues"
         }
       }
     },
     "developers": {
       "breadcrumb": "Developers"
+    },
+    "support": {
+      "title": "Support",
+      "access_denied": "Support tickets are available to organization admins and maintainers.",
+      "filter_status": "Status",
+      "filter_priority": "Priority",
+      "filter_category": "Category",
+      "all": "All",
+      "assigned_to_me": "Assigned to me",
+      "unassigned": "Unassigned",
+      "empty": "No tickets match these filters",
+      "showing": "Showing {{from}}–{{to}} of {{total}}",
+      "previous": "Previous",
+      "next": "Next",
+      "select_ticket": "Select a ticket to see details",
+      "learner": "Learner",
+      "assignee": "Assignee",
+      "assign_me": "Assign to me",
+      "unassign": "Unassign",
+      "resolve": "Resolve",
+      "resolve_title": "Resolve ticket",
+      "resolve_note": "Resolution note",
+      "resolve_note_hint": "The learner sees this on their ticket.",
+      "resolve_confirm": "Mark as resolved",
+      "close": "Close ticket",
+      "close_confirm": "Close this ticket? Nobody will be able to reply.",
+      "reopen": "Reopen",
+      "updated": "Ticket updated",
+      "cancel": "Cancel",
+      "back": "Back to queue"
     }
   },
   "editor": {
@@ -6700,6 +6734,89 @@
     "pricing": {
       "from": "from",
       "subscription": "subscription"
+    }
+  },
+  "tickets": {
+    "status": {
+      "OPEN": "Open",
+      "IN_PROGRESS": "In progress",
+      "RESOLVED": "Resolved",
+      "CLOSED": "Closed",
+      "unknown": "Unknown"
+    },
+    "priority": {
+      "LOW": "Low",
+      "MEDIUM": "Medium",
+      "HIGH": "High",
+      "URGENT": "Urgent",
+      "unknown": "Unknown"
+    },
+    "category": {
+      "TECHNICAL": "Technical",
+      "COURSE_CONTENT": "Course content",
+      "BILLING": "Billing",
+      "ACCOUNT": "Account",
+      "OTHER": "Other"
+    },
+    "thread": {
+      "support_team": "Support team",
+      "internal": "Internal",
+      "you": "You"
+    },
+    "reply": {
+      "placeholder": "Write a reply…",
+      "send": "Send",
+      "internal_toggle": "Internal note",
+      "internal_send": "Add internal note",
+      "reopen_hint": "Still having trouble? Replying will reopen this ticket.",
+      "closed": "This ticket is closed. Raise a new ticket if you still need help.",
+      "sent": "Reply sent"
+    },
+    "resolution": "Resolution",
+    "not_found": "Ticket not found",
+    "load_error": "Couldn't load tickets.",
+    "retry": "Retry",
+    "messages_count": "{{count}} messages",
+    "updated": "Updated {{time}}",
+    "opened": "Opened {{time}}",
+    "course": "Course",
+    "attachments": {
+      "add": "Attach image",
+      "remove": "Remove image",
+      "uploading": "Uploading image…",
+      "unsupported_type": "Only JPEG, PNG, GIF and WebP images can be attached.",
+      "too_large": "Images must be 10 MB or smaller.",
+      "too_many": "You can attach up to 5 images.",
+      "upload_failed": "Image upload failed.",
+      "partial_failure": "Your ticket was created, but some images couldn't be uploaded. You can add them in a reply.",
+      "view": "View image",
+      "image_unavailable": "Image unavailable",
+      "internal_locked": "Remove the images to switch between a reply and an internal note."
+    }
+  },
+  "help": {
+    "title": "Help & Support",
+    "description": "Get help with your account and courses",
+    "sign_in": "Sign in to contact support.",
+    "tab_my_tickets": "My tickets",
+    "tab_raise": "Raise a ticket",
+    "back": "Back to my tickets",
+    "empty": "You haven't raised any tickets yet",
+    "raise_new": "Raise a new ticket",
+    "form": {
+      "subject": "Subject",
+      "subject_placeholder": "Short summary of the problem",
+      "category": "Category",
+      "course": "Related course",
+      "course_none": "None",
+      "description": "Description",
+      "description_placeholder": "What happened? What did you expect? Steps to reproduce help a lot.",
+      "submit": "Submit ticket",
+      "submitted": "Ticket submitted",
+      "errors": {
+        "too_short": "Too short",
+        "too_long": "Too long"
+      }
     }
   }
 }

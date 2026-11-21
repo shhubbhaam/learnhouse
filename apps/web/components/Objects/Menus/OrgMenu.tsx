@@ -25,6 +25,7 @@ import {
   SquaresFour,
   ChalkboardSimple,
   Signpost,
+  Lifebuoy,
 } from '@phosphor-icons/react'
 import { DiscordIcon } from '@components/Objects/Icons/DiscordIcon'
 import {
@@ -196,6 +197,27 @@ export const OrgMenu = (props: any) => {
                     </TooltipTrigger>
                     <TooltipContent side="bottom" className="text-xs">
                       {t('courses.progress')}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+            </AuthenticatedClientElement>
+            {/* Help & Support */}
+            <AuthenticatedClientElement checkMethod="authentication">
+              <div className="hidden md:flex">
+                <TooltipProvider delayDuration={0}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Link
+                        href={getUriWithOrg(orgslug, '/help')}
+                        className={`p-2 rounded-lg transition-colors ${colors.iconBtn}`}
+                        aria-label={t('help.title')}
+                      >
+                        <Lifebuoy size={20} weight="fill" />
+                      </Link>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="text-xs">
+                      {t('help.title')}
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>

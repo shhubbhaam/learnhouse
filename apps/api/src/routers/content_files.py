@@ -31,6 +31,7 @@ from src.security.submission_file_access import (
     is_submission_file,
     enforce_submission_file_access,
 )
+from src.security.ticket_file_access import is_ticket_file, enforce_ticket_file_access
 from src.services.courses.transfer.storage_utils import (
     get_storage_client,
     get_s3_bucket_name,
@@ -164,6 +165,12 @@ async def _check_content_access(
     # member, or anyone on a public course, download another learner's work).
     if is_submission_file(parts):
         await enforce_submission_file_access(parts, current_user, db_session, request)
+        return
+
+    # Support-ticket attachments: ticket owner, uploader or org staff only.
+    # Must run before the generic "org content is public" rule below.
+    if is_ticket_file(parts):
+        await enforce_ticket_file_access(parts, current_user, db_session)
         return
 
     # Activity content: requires course to be public or user to be org member

@@ -1,9 +1,11 @@
 from datetime import datetime, timezone
 from typing import List, Optional
 
+from pydantic import ConfigDict, model_validator
 from sqlalchemy import Boolean, Column, ForeignKey, Integer, Text
 from sqlmodel import Field, SQLModel
 
+from src.db.tickets.ticket_attachments import MAX_ATTACHMENTS_PER_MESSAGE, TicketAttachmentRead
 from src.db.tickets.tickets import DESCRIPTION_MAX_LENGTH, SupportTicketRead
 from src.db.users import UserReadAuthor
 
@@ -31,8 +33,17 @@ class TicketMessage(SQLModel, table=True):
 
 
 class TicketMessageCreate(SQLModel):
-    content: str = Field(min_length=1, max_length=DESCRIPTION_MAX_LENGTH)
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    content: str = Field(default="", max_length=DESCRIPTION_MAX_LENGTH)
     is_internal: bool = False
+    attachment_uuids: List[str] = Field(default_factory=list, max_length=MAX_ATTACHMENTS_PER_MESSAGE)
+
+    @model_validator(mode="after")
+    def _text_or_images(self):
+        if not self.content and not self.attachment_uuids:
+            raise ValueError("A reply needs text or at least one image")
+        return self
 
 
 class TicketMessageRead(SQLModel):
@@ -45,7 +56,10 @@ class TicketMessageRead(SQLModel):
     is_internal: bool
     creation_date: str
     author: Optional[UserReadAuthor] = None
+    attachments: List[TicketAttachmentRead] = []
 
 
 class SupportTicketDetail(SupportTicketRead):
     messages: List[TicketMessageRead] = []
+    # Images raised with the ticket (shown under the description).
+    attachments: List[TicketAttachmentRead] = []

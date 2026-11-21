@@ -17,6 +17,7 @@ import {
   CaretDown,
   PencilSimple,
   ChatsCircle,
+  Lifebuoy,
   Book,
   ChatCircleDots,
   Headphones,
@@ -498,6 +499,13 @@ function DashLeftMenu() {
                 active={isActivePath('/dash/communities')}
               />
             )}
+            <MenuLink
+              href="/dash/support"
+              icon={<Lifebuoy size={20} weight="fill" />}
+              label={t('dashboard.support.title')}
+              isCollapsed={isCollapsed}
+              active={isActivePath('/dash/support')}
+            />
             {showPodcasts && (
               <MenuLink
                 href="/dash/podcasts"

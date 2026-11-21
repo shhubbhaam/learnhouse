@@ -294,3 +294,65 @@ Modified:
 - `apps/web/components/Dashboard/Menus/DashLeftMenu.tsx`,
   `DashMobileMenu.tsx` (Support link)
 - `apps/web/locales/en.json` (strings)
+
+---
+
+# Addendum (2026-10-31): Private image attachments
+
+## A1. Goal
+Learners and staff can attach screenshots/photos to tickets. Files are
+**private**: only the ticket owner and that org's staff can load them, and
+images attached to internal notes are staff-only. A leaked URL shows nothing to
+anyone else.
+
+## A2. Behaviour
+- Images only: JPEG, PNG, GIF, WebP; max 10 MB each; max 5 per message (and 5
+  on the original ticket). Same types/size as community images.
+- Learners: attach on **Raise a Ticket** (shown under the description) and in
+  replies. Staff: attach in replies and internal notes.
+- Paste (Ctrl+V) and file picker both work in the reply box.
+- A reply may be images only (empty text) when at least one image is attached.
+- No attaching to a CLOSED ticket (409), same as replies.
+- Thumbnails in the thread and under the description; click opens the full
+  image in a modal. Internal-note images show inside the amber note.
+
+## A3. Storage and access control
+- Files are uploaded with the existing `upload_file` helper (local disk or S3)
+  to `orgs/{org_uuid}/tickets/{ticket_uuid}/{file}`; internal-note images to
+  `orgs/{org_uuid}/tickets/{ticket_uuid}/internal/{file}`.
+- New table `ticketattachment`: `id, attachment_uuid, ticket_id (CASCADE),
+  message_id (nullable, CASCADE), uploader_id (CASCADE), file_id,
+  content_type, size, is_internal, attached, creation_date`.
+  `attached=false` means uploaded but not yet sent with a reply.
+- New `src/security/ticket_file_access.py` (`is_ticket_file`,
+  `enforce_ticket_file_access`), called from `_check_content_access` in **both**
+  `routers/local_content.py` and `routers/content_files.py`, before the generic
+  "orgs/* is public" rule. Access is granted only when an attachment row for
+  that ticket + file exists and the caller is:
+  - org staff (admin/maintainer) or superadmin; or
+  - the uploader; or
+  - the ticket owner, for a non-internal, attached file.
+  Anonymous → 401; API tokens and everyone else → 403; an org uuid in the path
+  that doesn't match the ticket's org → 403.
+- The web client loads images with `fetch` + `Authorization: Bearer` and shows
+  them via a blob URL, so it doesn't depend on cookies reaching the API domain.
+
+## A4. API changes
+- `POST /tickets/{uuid}/attachments` (multipart): `file`, `is_internal`
+  (bool, default false), `attach_to_ticket` (bool, default false).
+  Caller must be able to see the ticket. `is_internal` requires staff.
+  `attach_to_ticket` requires the ticket owner and creates an attached,
+  ticket-level row (message_id null); otherwise the row is pending.
+  Returns `TicketAttachmentRead`.
+- `TicketMessageCreate` gains `attachment_uuids: list[str]` (max 5). Each must be
+  a pending row on this ticket uploaded by the caller with the same
+  `is_internal` as the message; otherwise 400. Content may be empty only when
+  `attachment_uuids` is non-empty.
+- Read models: `TicketAttachmentRead { attachment_uuid, file_path, content_type,
+  size, is_internal }` where `file_path` is the content path above.
+  `SupportTicketDetail.attachments` (ticket-level) and
+  `TicketMessageRead.attachments`. Non-staff never receive internal ones.
+
+## A5. Out of scope
+Deleting attachments, non-image files, cleanup of never-sent uploads (they stay
+private and invisible to everyone but the uploader and staff).

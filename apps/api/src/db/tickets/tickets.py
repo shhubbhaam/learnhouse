@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import List, Optional
 
+from pydantic import ConfigDict
 from sqlalchemy import Column, ForeignKey, Index, Integer, Text
 from sqlmodel import Field, SQLModel
 
@@ -76,6 +77,8 @@ class SupportTicket(SQLModel, table=True):
 class SupportTicketCreate(SQLModel):
     """Learner-submitted ticket. Priority is deliberately absent: staff set it
     during triage so learners cannot self-escalate everything to URGENT."""
+    model_config = ConfigDict(str_strip_whitespace=True)
+
     org_id: int
     subject: str = Field(min_length=3, max_length=SUBJECT_MAX_LENGTH)
     description: str = Field(min_length=10, max_length=DESCRIPTION_MAX_LENGTH)
@@ -85,6 +88,8 @@ class SupportTicketCreate(SQLModel):
 
 class SupportTicketUpdate(SQLModel):
     """Staff-only triage update. Every field is optional; only sent fields change."""
+    model_config = ConfigDict(str_strip_whitespace=True)
+
     status: Optional[TicketStatusEnum] = None
     priority: Optional[TicketPriorityEnum] = None
     assigned_to: Optional[int] = None

@@ -1,5 +1,5 @@
 import React from 'react'
-import { BookCopy, SquareLibrary, Signpost, Headphones } from 'lucide-react'
+import { BookCopy, SquareLibrary, Signpost, Headphones, LifeBuoy } from 'lucide-react'
 import { ChalkboardSimple, Cube } from '@phosphor-icons/react'
 import { useTranslation } from 'react-i18next'
 
@@ -25,6 +25,8 @@ function TypeOfContentTitle({ title, type }: TypeOfContentTitleProps) {
         return <ChalkboardSimple size={16} className="text-black" weight="fill" />
       case 'pg':
         return <Cube size={16} className="text-black" weight="fill" />
+      case 'help':
+        return <LifeBuoy className="w-4 h-4 text-black" />
       default:
         return null
     }

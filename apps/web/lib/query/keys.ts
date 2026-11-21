@@ -112,4 +112,10 @@ export const queryKeys = {
     customers: (orgId: number) => ['payments', orgId, 'customers'] as const,
     groups: (orgId: number) => ['payments', orgId, 'groups'] as const,
   },
+  tickets: {
+    all: ['tickets'] as const,
+    mine: (orgId: number) => ['tickets', 'mine', orgId] as const,
+    detail: (uuid: string) => ['tickets', 'detail', uuid] as const,
+    queue: (orgId: number, query: string) => ['tickets', 'queue', orgId, query] as const,
+  },
 }
